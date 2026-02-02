@@ -1,67 +1,215 @@
-// ... (前略：HTML/CSS部分は同じです) ...
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>屋根積算 AI Vision Ultimate 2.5</title>
+    <style>
+        :root { --primary: #2563eb; --dark: #0f172a; --bg: #f8fafc; --success: #22c55e; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 15px; background: var(--bg); margin: 0; }
+        .container { background: white; padding: 20px; border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); max-width: 850px; margin: auto; }
+        
+        /* APIキー設定 */
+        .api-box { background: #eff6ff; padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #bfdbfe; }
+        .api-row { display: flex; gap: 8px; margin-top: 8px; }
+        input[type="password"] { flex: 1; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 16px; }
+        
+        /* 撮影ユニット */
+        .upload-btn { 
+            background: #fff; border: 2px dashed #3b82f6; padding: 30px 10px; 
+            text-align: center; border-radius: 16px; cursor: pointer; display: block; margin-bottom: 15px;
+            transition: all 0.2s ease;
+        }
+        .upload-btn:active { background: #dbeafe; transform: scale(0.98); }
+        .text-main { font-weight: bold; color: var(--primary); font-size: 1.2rem; display: block; margin-top: 8px; }
+        
+        /* サムネイル管理 */
+        #thumb-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 12px; margin-bottom: 20px; }
+        .thumb-item { position: relative; border-radius: 12px; overflow: hidden; aspect-ratio: 1; border: 2px solid #e2e8f0; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .thumb-img { width: 100%; height: 100%; object-fit: cover; }
+        .remove-btn { position: absolute; top: 0; right: 0; background: #ef4444; color: white; border: none; width: 28px; height: 28px; cursor: pointer; font-weight: bold; border-bottom-left-radius: 8px; }
+
+        /* 実行ボタン */
+        .action-btn { width: 100%; padding: 20px; border: none; border-radius: 14px; font-size: 1.2rem; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        .primary-btn { background: var(--primary); color: white; box-shadow: 0 4px 12px rgba(37,99,235,0.3); }
+        .disabled-btn { background: #cbd5e1; color: #64748b; cursor: not-allowed; }
+        
+        #status { display: none; margin-top:20px; padding: 15px; border-radius: 10px; text-align: center; font-weight: bold; border: 1px solid transparent; }
+        .loading-spin { display: inline-block; width: 18px; height: 18px; border: 3px solid rgba(255,255,255,.3); border-radius: 50%; border-top-color: #fff; animation: spin 1s ease-in-out infinite; margin-left: 10px; }
+
+        #result-area { display: none; margin-top: 25px; border-top: 3px solid #f1f5f9; padding-top: 20px; animation: fadeIn 0.5s ease; }
+        .svg-container { background: #0f172a; border-radius: 16px; padding: 20px; text-align: center; overflow-x: auto; margin-bottom: 20px; }
+        
+        table { width: 100%; border-collapse: collapse; border-radius: 12px; overflow: hidden; }
+        th, td { padding: 14px; border-bottom: 1px solid #e2e8f0; text-align: left; }
+        th { background: #f8fafc; color: #475569; font-weight: 600; }
+        
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1 style="text-align:center; font-size:1.4rem; color:var(--dark);">屋根積算 AI Vision Ultimate <span style="color:var(--primary);">2.5</span></h1>
+    
+    <div class="api-box">
+        <label style="font-size:0.85rem; font-weight:bold; color:#1e40af;">🔑 Gemini 2.5 API Key</label>
+        <div class="api-row">
+            <input type="password" id="apiKey" placeholder="Gemini 2.5 Flash APIキーを入力">
+            <button style="padding:0 20px; background:var(--dark); color:white; border-radius:8px; border:none; cursor:pointer;" onclick="saveSettings()">保存</button>
+        </div>
+    </div>
+
+    <label class="upload-btn">
+        <span style="font-size:2.5rem;">📸</span>
+        <span class="text-main">図面・現場を撮影して追加</span>
+        <span style="font-size:0.85rem; color:#64748b; margin-top:5px; display:block;">順番に撮影すると、AIが自動で統合解析します</span>
+        <input type="file" id="fileInput" multiple accept="image/*" onchange="addFiles(this)" style="display: none;">
+    </label>
+
+    <div id="thumb-list"></div>
+
+    <button id="analyzeBtn" class="action-btn disabled-btn" onclick="runAI()" disabled>🚀 解析開始 (0枚)</button>
+
+    <div id="status"></div>
+
+    <div id="result-area">
+        <h3 style="margin-left:5px;">📐 AI生成 屋根伏図</h3>
+        <div class="svg-container" id="svg-output"></div>
+        
+        <h3 style="margin-left:5px;">📋 部位別積算データ</h3>
+        <div style="overflow-x:auto; background:white; border:1px solid #e2e8f0; border-radius:12px;">
+            <table>
+                <thead><tr><th>部位</th><th>名称</th><th>長さ(mm)</th><th>詳細</th></tr></thead>
+                <tbody id="table-body"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    // 2.5 Flash モデルを明示的に指定
+    const TARGET_MODEL = "gemini-2.5-flash"; 
+    let allFiles = [];
+
+    window.onload = () => {
+        const savedKey = localStorage.getItem('gemini_api_25');
+        if(savedKey) document.getElementById('apiKey').value = savedKey;
+    };
+
+    function saveSettings() {
+        localStorage.setItem('gemini_api_25', document.getElementById('apiKey').value);
+        alert("2.5対応キーを保存しました");
+    }
+
+    function addFiles(input) {
+        const newFiles = Array.from(input.files);
+        allFiles = allFiles.concat(newFiles);
+        updateView();
+        input.value = ''; 
+    }
+
+    function updateView() {
+        const list = document.getElementById('thumb-list');
+        const btn = document.getElementById('analyzeBtn');
+        list.innerHTML = '';
+        allFiles.forEach((file, i) => {
+            const div = document.createElement('div');
+            div.className = 'thumb-item';
+            const img = document.createElement('img');
+            img.className = 'thumb-img';
+            const reader = new FileReader();
+            reader.onload = e => img.src = e.target.result;
+            reader.readAsDataURL(file);
+            const del = document.createElement('button');
+            del.className = 'remove-btn';
+            del.innerHTML = '×';
+            del.onclick = (e) => { e.preventDefault(); allFiles.splice(i, 1); updateView(); };
+            div.appendChild(img);
+            div.appendChild(del);
+            list.appendChild(div);
+        });
+        btn.disabled = allFiles.length === 0;
+        btn.className = allFiles.length > 0 ? 'action-btn primary-btn' : 'action-btn disabled-btn';
+        btn.innerText = `🚀 2.5 Flash 解析開始 (${allFiles.length}枚)`;
+    }
 
     async function runAI() {
         const apiKey = document.getElementById('apiKey').value;
-        if (!apiKey) return alert("APIキーを入力してください");
-        
         const status = document.getElementById('status');
+        if (!apiKey) return alert("APIキーが必要です");
+        
         status.style.display = 'block';
-        status.style.color = "#c2410c"; // オレンジ
-        status.innerHTML = `画像${allFiles.length}枚を統合して解析中... <span class='loading'></span>`;
+        status.style.background = '#1e293b';
+        status.style.color = '#fff';
+        status.innerHTML = `Gemini 2.5 Flash 統合解析中... <div class="loading-spin"></div>`;
         document.getElementById('result-area').style.display = 'none';
 
         try {
-            // 画像のリサイズ処理（少し小さめにして転送を速くします）
-            const imagePromises = allFiles.map(file => resizeImage(file, 1000)); 
-            const base64Images = await Promise.all(imagePromises);
+            // 2.5 Flashの入力サイズに合わせて最適化
+            const base64Images = await Promise.all(allFiles.map(file => resizeImage(file, 1600)));
             
-            const prompt = "（中略：プロンプト内容は以前と同じ）";
+            const prompt = `あなたは屋根積算のスペシャリストです。提供された全ての画像を横断的に解析し、1.SVG形式の屋根伏図（各辺の寸法入り、背景透明、線は白） 2.以下のJSONを生成してください。
+            %%%JSON_START%%%
+            {"items": [{"type": "平出", "name": "南面1", "length_mm": 5460, "note": "4寸勾配"}]}
+            %%%JSON_END%%%`;
 
-            const contentParts = [{ text: prompt }];
+            const parts = [{ text: prompt }];
             base64Images.forEach(b64 => {
-                contentParts.push({ inline_data: { mime_type: "image/jpeg", data: b64.split(',')[1] } });
+                parts.push({ inline_data: { mime_type: "image/jpeg", data: b64.split(',')[1] } });
             });
 
-            // タイムアウト設定を追加（2分で打ち切り）
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 120000);
-
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${FIXED_MODEL}:generateContent?key=${apiKey}`, {
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${TARGET_MODEL}:generateContent?key=${apiKey}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ contents: [{ parts: contentParts }] }),
-                signal: controller.signal
+                body: JSON.stringify({ contents: [{ parts }] })
             });
 
-            clearTimeout(timeoutId);
-
             const data = await response.json();
+            if (data.error) throw new Error(data.error.message);
 
-            // --- エラー診断表示を追加 ---
-            if (data.error) {
-                if (data.error.message.includes("API key not valid")) {
-                    throw new Error("APIキーが正しくありません。コピーミスがないか確認してください。");
-                } else if (data.error.code === 429) {
-                    throw new Error("リクエスト回数制限（無料枠）を超えました。少し待ってからお試しください。");
-                } else {
-                    throw new Error("Google APIエラー: " + data.error.message);
-                }
+            const resultText = data.candidates[0].content.parts[0].text;
+            const svgMatch = resultText.match(/<svg[\s\S]*?<\/svg>/);
+            const jsonMatch = resultText.match(/%%%JSON_START%%%([\s\S]*?)%%%JSON_END%%%/);
+
+            if (svgMatch) document.getElementById('svg-output').innerHTML = svgMatch[0];
+            if (jsonMatch) {
+                const items = JSON.parse(jsonMatch[1]).items;
+                const tbody = document.getElementById('table-body');
+                tbody.innerHTML = items.map(it => `<tr><td><b>${it.type}</b></td><td>${it.name}</td><td>${it.length_mm.toLocaleString()}</td><td>${it.note}</td></tr>`).join('');
+                
+                status.style.background = '#f0fdf4';
+                status.style.color = '#166534';
+                status.innerHTML = "✅ 解析完了";
+                document.getElementById('result-area').style.display = 'block';
             }
-            
-            if (!data.candidates || data.candidates.length === 0) {
-                throw new Error("AIから回答が得られませんでした。画像の内容が判別できない可能性があります。");
-            }
-
-            const rawText = data.candidates[0].content.parts[0].text;
-            // ... (後略：結果表示処理は同じ) ...
-
         } catch (e) {
-            console.error(e);
-            status.style.color = "red";
-            if (e.name === 'AbortError') {
-                status.innerHTML = `❌ タイムアウト：通信に時間がかかりすぎました。画像の枚数を減らすか、電波の良い場所で試してください。`;
-            } else {
-                status.innerHTML = `❌ エラー発生：${e.message}`;
-            }
+            status.style.background = '#fef2f2';
+            status.style.color = '#991b1b';
+            status.innerHTML = `❌ エラー: ${e.message}`;
         }
     }
+
+    function resizeImage(file, maxWidth) {
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = (e) => {
+                const img = new Image();
+                img.src = e.target.result;
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    const scale = maxWidth / img.width;
+                    canvas.width = Math.min(img.width, maxWidth);
+                    canvas.height = img.height * (canvas.width / img.width);
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    resolve(canvas.toDataURL('image/jpeg', 0.85));
+                };
+            };
+        });
+    }
+</script>
+</body>
+</html>
