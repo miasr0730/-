@@ -3,134 +3,176 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>屋根積算 AI 2.5 - Multi-Image</title>
+    <title>屋根積算 AI 2.5 精密解析版</title>
     <style>
-        body { font-family: sans-serif; padding: 15px; background: #f1f5f9; }
-        .box { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); max-width: 600px; margin: auto; }
-        .api-input { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
-        .upload-area { border: 2px dashed #2563eb; padding: 20px; text-align: center; border-radius: 12px; cursor: pointer; margin-bottom: 15px; }
-        #thumb-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); gap: 10px; margin-bottom: 15px; }
-        .thumb { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 5px; border: 1px solid #ccc; }
-        .btn { width: 100%; padding: 18px; background: #2563eb; color: white; border: none; border-radius: 10px; font-weight: bold; font-size: 1rem; cursor: pointer; }
-        #status { margin-top: 15px; font-weight: bold; text-align: center; color: #1e40af; }
-        #timer { font-family: monospace; text-align: center; margin-bottom: 10px; }
-        #result-area { margin-top: 20px; white-space: pre-wrap; background: #fff; padding: 15px; border-radius: 10px; border: 1px solid #ddd; display: none; }
+        :root { --primary: #2563eb; --accent: #ef4444; --bg: #f8fafc; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); padding: 15px; margin: 0; color: #1e293b; }
+        .container { background: white; padding: 20px; border-radius: 20px; max-width: 800px; margin: auto; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .api-box { background: #eff6ff; padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #bfdbfe; }
+        .upload-area { border: 2px dashed var(--primary); padding: 30px; text-align: center; border-radius: 16px; cursor: pointer; display: block; margin-bottom: 15px; background: #fff; }
+        #thumb-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 10px; margin-bottom: 15px; }
+        .thumb { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; border: 1px solid #ddd; }
+        .btn { width: 100%; padding: 18px; background: var(--primary); color: white; border: none; border-radius: 12px; font-weight: bold; font-size: 1.1rem; cursor: pointer; transition: 0.2s; }
+        .btn:disabled { background: #94a3b8; cursor: not-allowed; }
+        #status-area { margin-top: 15px; padding: 15px; border-radius: 10px; text-align: center; display: none; }
+        #timer { font-family: monospace; font-size: 1.2rem; text-align: center; margin: 10px 0; color: var(--primary); }
+        .reason-box { background: #f1f5f9; border-left: 4px solid var(--primary); padding: 15px; margin-top: 20px; display: none; font-size: 0.95rem; line-height: 1.6; }
+        .result-section { display: none; margin-top: 25px; border-top: 2px solid #eee; padding-top: 20px; }
+        .svg-box { background: #0f172a; border-radius: 12px; padding: 20px; text-align: center; overflow-x: auto; margin-bottom: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.9rem; }
+        th, td { padding: 12px; border-bottom: 1px solid #e2e8f0; text-align: left; }
+        th { background: #f8fafc; color: #64748b; }
     </style>
 </head>
 <body>
 
-<div class="box">
-    <h2 style="text-align:center; font-size:1.2rem;">Gemini 2.5 Flash 統合解析</h2>
-    <input type="password" id="apiKey" class="api-input" placeholder="Gemini APIキーを入力">
+<div class="container">
+    <h1 style="text-align:center; font-size:1.4rem;">屋根積算 AI Vision <span style="color:var(--primary);">2.5 Flash</span></h1>
     
+    <div class="api-box">
+        <label style="font-size:0.8rem; font-weight:bold;">Gemini 2.5 API Key</label>
+        <input type="password" id="apiKey" style="width:100%; padding:10px; border:1px solid #ccc; border-radius:8px; margin-top:5px;" placeholder="キーを入力してください">
+    </div>
+
     <label class="upload-area">
-        <strong>📷 図面を複数枚 撮影/選択</strong>
-        <input type="file" id="fileInput" multiple accept="image/*" onchange="handleFiles(this)" style="display: none;">
+        <strong>📸 立面図・平面図を全て撮影/追加</strong>
+        <p style="font-size:0.8rem; color:#64748b;">※複数枚選択・連続追加が可能です</p>
+        <input type="file" id="fileInput" multiple accept="image/*" onchange="addFiles(this)" style="display: none;">
     </label>
 
     <div id="thumb-list"></div>
-    <div id="timer">待機中</div>
+    <div id="timer">0.0s</div>
 
-    <button id="runBtn" class="btn" onclick="runAnalysis()">🚀 3枚を統合して解析開始</button>
-    <div id="status"></div>
+    <button id="runBtn" class="btn" onclick="runAI()">🚀 図面を統合解析する</button>
+
+    <div id="status-area"></div>
+
+    <div id="reason-box" class="reason-box">
+        <strong>🧐 AIの解析ロジック（検証用）:</strong><br>
+        <div id="ai-reasoning"></div>
+    </div>
+
+    <div id="result-area" class="result-section">
+        <h3>📐 生成された屋根伏図</h3>
+        <div class="svg-box" id="svg-output"></div>
+        
+        <h3>📋 積算データシート</h3>
+        <table id="result-table">
+            <thead><tr><th>部位</th><th>項目名</th><th>長さ(mm)</th><th>AIの判断根拠</th></tr></thead>
+            <tbody id="table-body"></tbody>
+        </table>
+    </div>
 </div>
 
-<div id="result-area"></div>
-
 <script>
-    let selectedFiles = [];
-    let timerInterval;
+    let files = [];
+    let timer;
 
     window.onload = () => {
-        const saved = localStorage.getItem('gemini_api_key_25');
-        if(saved) document.getElementById('apiKey').value = saved;
+        const key = localStorage.getItem('gemini_25_strict_key');
+        if(key) document.getElementById('apiKey').value = key;
     };
 
-    function handleFiles(input) {
-        const files = Array.from(input.files);
-        selectedFiles = selectedFiles.concat(files);
-        renderThumbs();
-    }
-
-    function renderThumbs() {
+    function addFiles(input) {
+        const newFiles = Array.from(input.files);
+        files = files.concat(newFiles);
         const list = document.getElementById('thumb-list');
         list.innerHTML = '';
-        selectedFiles.forEach(file => {
-            const img = document.createElement('img');
-            img.className = 'thumb';
+        files.forEach(f => {
             const reader = new FileReader();
-            reader.onload = e => img.src = e.target.result;
-            reader.readAsDataURL(file);
-            list.appendChild(img);
+            reader.onload = e => {
+                const img = document.createElement('img');
+                img.src = e.target.result; img.className = 'thumb';
+                list.appendChild(img);
+            };
+            reader.readAsDataURL(f);
         });
-        document.getElementById('runBtn').innerText = `🚀 ${selectedFiles.length}枚を統合して解析開始`;
     }
 
-    async function runAnalysis() {
+    async function runAI() {
         const key = document.getElementById('apiKey').value;
-        if (!key || selectedFiles.length === 0) return alert("キーと画像が必要です");
-        localStorage.setItem('gemini_api_key_25', key);
+        if(!key || files.length === 0) return alert("APIキーと図面を選択してください");
+        localStorage.setItem('gemini_25_strict_key', key);
 
-        const status = document.getElementById('status');
+        const status = document.getElementById('status-area');
         const runBtn = document.getElementById('runBtn');
         runBtn.disabled = true;
-        status.innerText = "解析中... (30秒〜60秒程度)";
-        
+        status.style.display = 'block';
+        status.style.background = '#fef3c7';
+        status.innerText = "立面図と平面図を照合中... (約40-60秒)";
+
         let sec = 0;
-        clearInterval(timerInterval);
-        timerInterval = setInterval(() => { sec += 0.1; document.getElementById('timer').innerText = `経過時間: ${sec.toFixed(1)}秒`; }, 100);
+        clearInterval(timer);
+        timer = setInterval(() => { sec += 0.1; document.getElementById('timer').innerText = `${sec.toFixed(1)}s`; }, 100);
 
         try {
-            // 画像を1200pxにリサイズしてデータ量を最適化
-            const base64Images = await Promise.all(selectedFiles.map(file => resizeImg(file)));
+            const b64s = await Promise.all(files.map(f => resize(f)));
             
+            // 指示（プロンプト）の強化：立面図優先・バルコニー除外
+            const prompt = `あなたはプロの屋根積算士です。提供された複数の図面を照合し、正確な積算を行ってください。
+
+【厳守事項】
+1. 軒の出の判定: 平面図にあるバルコニーの出幅（900mm等）に惑わされないでください。立面図に示されている「壁芯から軒先まで」の寸法（例: 275mm）を屋根の正解として採用してください。
+2. 勾配の判定: 立面図に記載された勾配係数（3.5寸など）を基準にしてください。
+3. 解析プロセス: まず立面図で断面寸法を確定させ、それを平面図の屋根ラインに適用してください。
+
+【出力】
+1. 解析の根拠: なぜその数値を選んだか日本語で解説。
+2. 屋根伏図(SVG): 境界線と寸法。背景透明、白線。
+3. 積算JSON: %%%JSON_START%%% {"items": [{"type": "部位", "name": "名称", "length_mm": 1000, "note": "根拠"}]} %%%JSON_END%%%`;
+
             const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     contents: [{
-                        parts: [
-                            { text: "これらの図面（立面図・平面図）を全て読み取り、屋根勾配、軒の出、各部位の長さを積算してください。結果は表形式で。出力は日本語で。" },
-                            ...base64Images.map(b64 => ({ inline_data: { mime_type: "image/jpeg", data: b64 } }))
-                        ]
+                        parts: [{ text: prompt }, ...b64s.map(b => ({ inline_data: { mime_type: "image/jpeg", data: b } }))]
                     }]
                 })
             });
 
             const data = await response.json();
-            clearInterval(timerInterval);
-            
+            clearInterval(timer);
             if (data.error) throw new Error(data.error.message);
 
-            const resultText = data.candidates[0].content.parts[0].text;
-            document.getElementById('result-area').style.display = 'block';
-            document.getElementById('result-area').innerText = resultText;
-            status.innerText = "✅ 解析完了";
+            const text = data.candidates[0].content.parts[0].text;
+            
+            // 根拠の抽出
+            const reasonText = text.split('%%%')[0];
+            document.getElementById('ai-reasoning').innerText = reasonText;
+            document.getElementById('reason-box').style.display = 'block';
 
+            // SVGとJSONの抽出
+            const svgMatch = text.match(/<svg[\s\S]*?<\/svg>/);
+            const jsonMatch = text.match(/%%%JSON_START%%%([\s\S]*?)%%%JSON_END%%%/);
+
+            if(svgMatch) document.getElementById('svg-output').innerHTML = svgMatch[0];
+            if(jsonMatch) {
+                const items = JSON.parse(jsonMatch[1]).items;
+                document.getElementById('table-body').innerHTML = items.map(it => `<tr><td><b>${it.type}</b></td><td>${it.name}</td><td>${it.length_mm.toLocaleString()}</td><td>${it.note}</td></tr>`).join('');
+            }
+            
+            document.getElementById('result-area').style.display = 'block';
+            status.style.background = '#dcfce7';
+            status.innerText = "✅ 精密解析完了";
         } catch (e) {
-            clearInterval(timerInterval);
+            clearInterval(timer);
+            status.style.background = '#fee2e2';
             status.innerText = "❌ エラー: " + e.message;
-            console.error(e);
-        } finally {
-            runBtn.disabled = false;
-        }
+        } finally { runBtn.disabled = false; }
     }
 
-    function resizeImg(file) {
-        return new Promise(resolve => {
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = e => {
-                const img = new Image();
-                img.src = e.target.result;
-                img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    const max = 1200;
-                    const scale = Math.min(1, max / Math.max(img.width, img.height));
-                    canvas.width = img.width * scale;
-                    canvas.height = img.height * scale;
-                    canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-                    resolve(canvas.toDataURL('image/jpeg', 0.8).split(',')[1]);
+    function resize(f) {
+        return new Promise(res => {
+            const r = new FileReader(); r.readAsDataURL(f);
+            r.onload = e => {
+                const i = new Image(); i.src = e.target.result;
+                i.onload = () => {
+                    const c = document.createElement('canvas');
+                    const m = 1400; const s = Math.min(1, m/Math.max(i.width, i.height));
+                    c.width = i.width*s; c.height = i.height*s;
+                    c.getContext('2d').drawImage(i,0,0,c.width,c.height);
+                    res(c.toDataURL('image/jpeg', 0.85).split(',')[1]);
                 };
             };
         });
