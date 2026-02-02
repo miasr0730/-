@@ -5,48 +5,61 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>屋根積算 AI Vision Ultimate</title>
     <style>
-        :root { --primary: #2563eb; --dark: #0f172a; --accent: #f59e0b; --bg: #f8fafc; --success: #22c55e; }
-        body { font-family: 'Helvetica Neue', Arial, sans-serif; padding: 20px; background: var(--bg); margin: 0; color: #333; }
-        .container { background: white; padding: 25px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); max-width: 800px; margin: auto; }
+        :root { --primary: #2563eb; --dark: #0f172a; --accent: #f59e0b; --bg: #f8fafc; --success: #22c55e; --danger: #ef4444; }
+        body { font-family: 'Helvetica Neue', Arial, sans-serif; padding: 15px; background: var(--bg); margin: 0; color: #333; }
+        .container { background: white; padding: 20px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); max-width: 800px; margin: auto; }
         
-        h1 { text-align: center; color: var(--dark); margin-bottom: 20px; font-size: 1.4rem; }
+        h1 { text-align: center; color: var(--dark); margin-bottom: 20px; font-size: 1.3rem; }
         
         /* APIキー設定 */
         .api-box { background: #eff6ff; padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #bfdbfe; }
-        .api-row { display: flex; gap: 10px; margin-top: 8px; }
-        input[type="password"] { flex: 1; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; }
-        .btn-small { padding: 8px 24px; background: var(--dark); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .api-row { display: flex; gap: 8px; margin-top: 5px; }
+        input[type="password"] { flex: 1; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; }
+        .btn-small { padding: 8px 16px; background: var(--dark); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 0.9rem; }
 
-        /* アップロードエリア */
-        .upload-area { border: 2px dashed #cbd5e1; padding: 30px; text-align: center; border-radius: 16px; margin-bottom: 20px; background: #fff; cursor: pointer; transition: 0.2s; display: block; }
-        .upload-area:hover { border-color: var(--primary); background: #f0f9ff; }
-        .file-label { font-weight: bold; color: var(--primary); font-size: 1.1rem; display: block; }
-        .file-desc { font-size: 0.85rem; color: #64748b; margin-top: 5px; }
+        /* アップロードボタン */
+        .upload-btn { 
+            background: white; border: 2px dashed #cbd5e1; padding: 20px; 
+            text-align: center; border-radius: 16px; cursor: pointer; display: block; 
+            transition: 0.2s; margin-bottom: 15px;
+        }
+        .upload-btn:active { background: #f0f9ff; border-color: var(--primary); transform: scale(0.98); }
+        .icon-cam { font-size: 2rem; display: block; margin-bottom: 5px; }
+        .text-main { font-weight: bold; color: var(--primary); display: block; }
+        .text-sub { font-size: 0.8rem; color: #64748b; }
 
-        /* サムネイル表示 */
-        #thumb-list { display: flex; gap: 10px; overflow-x: auto; margin-bottom: 15px; padding-bottom: 5px; }
-        .thumb { height: 70px; border-radius: 6px; border: 1px solid #ddd; object-fit: cover; }
+        /* サムネイルリスト */
+        #thumb-list { 
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); 
+            gap: 10px; margin-bottom: 20px; 
+        }
+        .thumb-item { position: relative; border-radius: 8px; overflow: hidden; aspect-ratio: 1; border: 1px solid #ddd; }
+        .thumb-img { width: 100%; height: 100%; object-fit: cover; }
+        .remove-btn { 
+            position: absolute; top: 0; right: 0; background: rgba(255,0,0,0.8); color: white; 
+            width: 24px; height: 24px; border: none; cursor: pointer; font-weight: bold;
+            border-bottom-left-radius: 6px; display: flex; align-items: center; justify-content: center;
+        }
 
-        /* 解析ステータス */
-        #status { display: none; padding: 15px; background: #fff7ed; border-radius: 8px; color: #c2410c; margin-bottom: 20px; font-weight: bold; border: 1px solid #ffedd5; text-align: center; }
+        /* 解析実行ボタン */
+        .action-btn { width: 100%; padding: 16px; border: none; border-radius: 12px; font-size: 1.1rem; font-weight: bold; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .primary-btn { background: var(--primary); color: white; }
+        .disabled-btn { background: #cbd5e1; color: #64748b; cursor: not-allowed; box-shadow: none; }
+        
+        /* ステータス & 結果 */
+        #status { display: none; margin-top:20px; padding: 15px; background: #fff7ed; border-radius: 8px; color: #c2410c; font-weight: bold; text-align: center; }
         .loading::after { content: " ⏳"; animation: spin 1s infinite linear; }
 
-        /* 結果エリア */
         #result-area { display: none; margin-top: 20px; border-top: 2px solid #f1f5f9; padding-top: 20px; }
-        .svg-container { background: #1e293b; border-radius: 12px; padding: 20px; text-align: center; overflow-x: auto; margin-bottom: 20px; display: flex; align-items: center; justify-content: center; }
-        svg { max-width: 100%; height: auto; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3)); }
+        .svg-container { background: #1e293b; border-radius: 12px; padding: 10px; text-align: center; overflow-x: auto; margin-bottom: 20px; min-height:150px; display: flex; align-items: center; justify-content: center; }
         
-        /* 集計テーブル */
         table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.9rem; }
-        th, td { padding: 12px; border-bottom: 1px solid #e2e8f0; text-align: left; }
-        th { background: #f1f5f9; color: #475569; font-weight: 600; }
-        .total-row { font-weight: bold; background: #f8fafc; color: var(--primary); border-top: 2px solid #e2e8f0; }
-        
-        .action-btn { width: 100%; margin-top: 10px; padding: 15px; border: none; border-radius: 10px; font-size: 1rem; font-weight: bold; cursor: pointer; transition: 0.2s; }
-        .primary-btn { background: var(--primary); color: white; }
-        .success-btn { background: var(--success); color: white; margin-top: 20px; }
-        .action-btn:active { transform: scale(0.98); }
+        th, td { padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: left; }
+        th { background: #f1f5f9; }
+        .total-row { font-weight: bold; background: #f8fafc; color: var(--primary); }
+        .copy-btn { background: var(--success); color: white; margin-top: 15px; }
 
+        @keyframes spin { 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
@@ -55,50 +68,48 @@
     <h1>屋根積算 AI Vision Ultimate</h1>
     
     <div class="api-box">
-        <label style="font-size:0.8rem; font-weight:bold; color:#1e40af;">🔑 Gemini APIキーを入力</label>
+        <label style="font-size:0.8rem; font-weight:bold; color:#1e40af;">🔑 APIキー設定</label>
         <div class="api-row">
-            <input type="password" id="apiKey" placeholder="AI Studioで取得したキーを貼り付け">
+            <input type="password" id="apiKey" placeholder="AI Studioのキーを貼付">
             <button class="btn-small" onclick="saveSettings()">保存</button>
         </div>
     </div>
 
-    <label class="upload-area">
-        <span class="file-label">📷 図面を選択 (複数選択可)</span>
-        <span class="file-desc">平面図と立面図をセットで選ぶと精度が上がります</span>
-        <input type="file" id="fileInput" multiple accept="image/*" onchange="handleFiles(this)" style="display: none;">
+    <label class="upload-btn">
+        <span class="icon-cam">📷</span>
+        <span class="text-main">写真を追加 / 撮影</span>
+        <span class="text-sub">タップして連続撮影できます</span>
+        <input type="file" id="fileInput" multiple accept="image/*" onchange="addFiles(this)" style="display: none;">
     </label>
 
     <div id="thumb-list"></div>
 
-    <button id="analyzeBtn" class="action-btn primary-btn" style="display:none;" onclick="runAI()">🚀 AI積算・屋根伏図生成を開始</button>
+    <button id="analyzeBtn" class="action-btn disabled-btn" onclick="runAI()" disabled>
+        🚀 AI解析を実行 (0枚)
+    </button>
 
     <div id="status"></div>
 
     <div id="result-area">
-        <h3 style="margin-top:0;">🤖 生成された屋根伏図</h3>
+        <h3>📐 AI生成: 屋根伏図</h3>
         <div class="svg-container" id="svg-output"></div>
 
-        <h3>📋 積算明細リスト</h3>
+        <h3>📋 積算リスト</h3>
         <div style="overflow-x:auto;">
             <table id="calc-table">
                 <thead>
-                    <tr>
-                        <th>部位</th>
-                        <th>名称・場所</th>
-                        <th>長さ (mm)</th>
-                        <th>詳細情報</th>
-                    </tr>
+                    <tr><th>部位</th><th>名称・場所</th><th>長さ (mm)</th><th>備考</th></tr>
                 </thead>
                 <tbody id="table-body"></tbody>
             </table>
         </div>
-        
-        <button class="action-btn success-btn" onclick="copyTable()">📋 表をコピーしてExcelに貼り付け</button>
+        <button class="action-btn copy-btn" onclick="copyTable()">📋 表をコピー</button>
     </div>
 </div>
 
 <script>
-    const FIXED_MODEL = "gemini-2.5-flash"; // モデルを固定
+    const FIXED_MODEL = "gemini-2.5-flash"; 
+    let allFiles = []; // ここに撮影した全ファイルを貯める
 
     window.onload = () => {
         const savedKey = localStorage.getItem('gemini_api_key');
@@ -110,60 +121,95 @@
         alert("APIキーを保存しました");
     }
 
-    let selectedFiles = [];
+    // --- ファイル追加処理（ここが重要） ---
+    function addFiles(input) {
+        const newFiles = Array.from(input.files);
+        if (newFiles.length === 0) return;
 
-    function handleFiles(input) {
-        selectedFiles = Array.from(input.files);
-        const list = document.getElementById('thumb-list');
-        list.innerHTML = '';
+        // 既存リストに追加
+        allFiles = allFiles.concat(newFiles);
         
-        if (selectedFiles.length > 0) {
-            document.getElementById('analyzeBtn').style.display = 'block';
-            selectedFiles.forEach(file => {
-                const reader = new FileReader();
-                reader.onload = e => {
-                    const img = document.createElement('img');
-                    img.src = e.target.result;
-                    img.className = 'thumb';
-                    list.appendChild(img);
-                };
-                reader.readAsDataURL(file);
-            });
+        // 画面更新
+        updateThumbnails();
+
+        // 重要：inputの中身をリセットしないと、同じ写真を連続で選んだ時に反応しない
+        input.value = ''; 
+    }
+
+    // --- サムネイル表示と削除機能 ---
+    function updateThumbnails() {
+        const list = document.getElementById('thumb-list');
+        const btn = document.getElementById('analyzeBtn');
+        list.innerHTML = '';
+
+        allFiles.forEach((file, index) => {
+            const div = document.createElement('div');
+            div.className = 'thumb-item';
+            
+            const img = document.createElement('img');
+            img.className = 'thumb-img';
+            const reader = new FileReader();
+            reader.onload = e => img.src = e.target.result;
+            reader.readAsDataURL(file);
+
+            // 削除ボタン
+            const delBtn = document.createElement('button');
+            delBtn.className = 'remove-btn';
+            delBtn.innerHTML = '×';
+            delBtn.onclick = () => removeFile(index);
+
+            div.appendChild(img);
+            div.appendChild(delBtn);
+            list.appendChild(div);
+        });
+
+        // ボタンの状態更新
+        if (allFiles.length > 0) {
+            btn.classList.remove('disabled-btn');
+            btn.classList.add('primary-btn');
+            btn.disabled = false;
+            btn.innerText = `🚀 AI解析を実行 (${allFiles.length}枚)`;
+        } else {
+            btn.classList.add('disabled-btn');
+            btn.classList.remove('primary-btn');
+            btn.disabled = true;
+            btn.innerText = `🚀 AI解析を実行 (0枚)`;
         }
     }
 
+    function removeFile(index) {
+        allFiles.splice(index, 1);
+        updateThumbnails();
+    }
+
+    // --- AI解析実行 ---
     async function runAI() {
         const apiKey = document.getElementById('apiKey').value;
         if (!apiKey) return alert("APIキーを入力してください");
         
         const status = document.getElementById('status');
         status.style.display = 'block';
-        status.innerHTML = `最新モデル(${FIXED_MODEL})で解析中... <span class='loading'></span>`;
+        status.innerHTML = `画像${allFiles.length}枚を統合して解析中... <span class='loading'></span>`;
         document.getElementById('result-area').style.display = 'none';
 
         try {
-            const imagePromises = selectedFiles.map(file => resizeImage(file, 1200));
+            // 溜まった画像を全てリサイズして変換
+            const imagePromises = allFiles.map(file => resizeImage(file, 1200));
             const base64Images = await Promise.all(imagePromises);
             
             const prompt = `
-あなたは屋根積算の専門家です。提供された全ての図面から屋根の形状を立体的に把握し、以下を出力してください。
+あなたは建築積算のプロです。添付された複数の画像（平面図・立面図・伏図の断片など）をすべて統合し、ひとつの整合性の取れた屋根モデルとして解析してください。
 
-1. 【屋根伏図のSVG】
-   - 真上から見た図。背景透明、線は白(#ffffff)。
-   - 軒先、ケラバ、棟、隅棟、谷を線で描き、それぞれの辺の横に算出したミリ単位の数値を記載してください。
-   - SVGタグのみ出力。
-
-2. 【積算データJSON】
-   - 以下の形式で、全ての辺（斜め、水平問わず）を網羅してください。
+【出力要件】
+1. 屋根伏図のSVGコード（背景透明、線は白、各辺に寸法値を記載）
+2. 以下のJSONデータ（すべての辺を網羅すること）
    %%%JSON_START%%%
    {
      "items": [
        { "type": "軒先", "name": "南面", "length_mm": 4550, "note": "水平" },
-       { "type": "ケラバ", "name": "東面", "length_mm": 3800, "note": "勾配なり" },
-       { "type": "登り", "name": "南面", "length_mm": 4900, "note": "勾配実寸" },
-       { "type": "棟", "name": "大棟", "length_mm": 9100, "note": "水平" }
+       { "type": "登り", "name": "南面", "length_mm": 4900, "note": "勾配4寸" }
      ],
-     "summary": "屋根形状と勾配の判断根拠を短く"
+     "summary": "屋根形状の判定理由"
    }
    %%%JSON_END%%%
 `;
@@ -183,8 +229,6 @@
             if (data.error) throw new Error(data.error.message);
             
             const rawText = data.candidates[0].content.parts[0].text;
-            
-            // SVGとJSONの抽出
             const svgMatch = rawText.match(/<svg[\s\S]*?<\/svg>/);
             const jsonMatch = rawText.match(/%%%JSON_START%%%([\s\S]*?)%%%JSON_END%%%/);
 
@@ -198,19 +242,14 @@
                 
                 jsonData.items.forEach(item => {
                     const tr = document.createElement('tr');
-                    tr.innerHTML = `
-                        <td><b style="color:var(--primary)">${item.type}</b></td>
-                        <td>${item.name}</td>
-                        <td style="font-weight:bold">${item.length_mm.toLocaleString()}</td>
-                        <td style="font-size:0.8rem; color:#666">${item.note}</td>
-                    `;
+                    tr.innerHTML = `<td><b>${item.type}</b></td><td>${item.name}</td><td>${item.length_mm.toLocaleString()}</td><td style="font-size:0.8rem">${item.note}</td>`;
                     tbody.appendChild(tr);
                     total += item.length_mm;
                 });
                 
                 const totalTr = document.createElement('tr');
                 totalTr.className = "total-row";
-                totalTr.innerHTML = `<td colspan="2">合計延長</td><td>${total.toLocaleString()} mm</td><td></td>`;
+                totalTr.innerHTML = `<td colspan="2">合計</td><td>${total.toLocaleString()} mm</td><td></td>`;
                 tbody.appendChild(totalTr);
 
                 status.innerHTML = `✅ 解析完了: ${jsonData.summary}`;
@@ -251,9 +290,8 @@
         window.getSelection().removeAllRanges();
         window.getSelection().addRange(range);
         document.execCommand('copy');
-        alert("クリップボードにコピーしました。Excelで「貼り付け」してください。");
+        alert("コピーしました");
     }
 </script>
-
 </body>
 </html>
