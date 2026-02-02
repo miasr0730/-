@@ -7,8 +7,10 @@
     <style>
         :root { --primary: #0284c7; --bg: #f1f5f9; }
         body { font-family: sans-serif; background: var(--bg); padding: 10px; color: #334155; }
+        .container { background: white; padding: 20 :root { --primary: #0284c7; --bg: #f1f5f9; }
+        body { font-family: sans-serif; background: var(--bg); padding: 10px; color: #334155; }
         .container { background: white; padding: 20px; border-radius: 16px; max-width: 600px; margin: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        .api-input { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 10px; font-size: 0.8rem; }
+        .api-input { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 10px; font-size: 0.8rem; box-sizing: border-box; }
         .upload-area { border: 2px dashed #0284c7; padding: 15px; text-align: center; border-radius: 10px; background: #fff; cursor: pointer; margin-bottom: 10px; }
         #thumb-list { display: flex; overflow-x: auto; gap: 8px; margin-bottom: 10px; }
         .thumb-wrapper { position: relative; flex: 0 0 60px; height: 60px; border: 1px solid #ccc; border-radius: 4px; }
@@ -16,7 +18,24 @@
         .del-btn { position: absolute; top: -5px; right: -5px; background: red; color: white; border-radius: 50%; width: 18px; height: 18px; border: none; font-size: 12px; }
         .btn { width: 100%; padding: 15px; background: #0284c7; color: white; border: none; border-radius: 10px; font-weight: bold; font-size: 1rem; cursor: pointer; }
         #result-area { margin-top: 20px; display: none; }
-        .svg-viewer { background: #1e293b; border-radius: 12px; padding: 10px; text-align: center; margin-bottom: 15px; }
+        
+        /* 【重要】SVG画像の大きさをスマホ画面内に固定する修正 */
+        .svg-viewer { 
+            background: #1e293b; 
+            border-radius: 12px; 
+            padding: 10px; 
+            text-align: center; 
+            margin-bottom: 15px;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+        }
+        .svg-viewer svg { 
+            max-width: 100%; 
+            height: auto; 
+            max-height: 450px; /* スマホで見やすい高さに制限 */
+        }
+        
         table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
         th { background: #e2e8f0; padding: 8px; text-align: left; font-size: 0.8rem; }
         td { padding: 10px; border-bottom: 1px solid #eee; font-size: 0.9rem; font-weight: bold; }
@@ -98,7 +117,6 @@
         try {
             const b64Images = await Promise.all(fileStack.map(file => toBase64(file)));
 
-            // 注文（プロンプト）を精密なロジックに差し戻し
             const prompt = `あなたは高度な建築積算士です。提供された全ての図面を以下の【精密照合ロジック】で解析し、営業資料用の結果を出力してください。
 
 ### 1. 三次元的な構造把握
@@ -111,7 +129,7 @@
 - 逆に、ポーチなどの柱で支えられた屋根がある場合は、立面図の情報を優先して屋根面積に含めること。
 
 ### 3. 出力指示
-- 屋根伏図（SVG形式、背景透明・線は白）を作成。
+- 屋根伏図（SVG形式、背景透明・線は白）を作成。スマホ画面で見やすいアスペクト比で描画すること。
 - 積算項目（形状、勾配、軒の出、建物最大外寸、面積等）を抽出。
 - 解析ログには、どの立面図とどの平面図を比較して結論を出したか簡潔に記すこと。
 
