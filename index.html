@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>屋根実寸計算機</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background: #f4f7f6; }
+        .card { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        h1 { font-size: 1.2rem; color: #333; }
+        label { display: block; margin-top: 10px; font-weight: bold; font-size: 0.9rem; }
+        input { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 1rem; }
+        .result { background: #e7f3ff; padding: 10px; margin-top: 15px; border-radius: 4px; border-left: 5px solid #2196F3; }
+        .result p { margin: 5px 0; font-weight: bold; color: #0d47a1; }
+    </style>
+</head>
+<body>
+    <h1>屋根実寸計算機 (簡易版)</h1>
+    <div id="roof-container">
+        <div class="card">
+            <label>平面図の幅 (mm) ※壁芯＋軒の出x2</label>
+            <input type="number" id="width" placeholder="例: 9422.5" oninput="calc()">
+            
+            <label>水平奥行 (mm) ※軒先から棟まで</label>
+            <input type="number" id="depth" placeholder="例: 4550" oninput="calc()">
+            
+            <label>勾配 (寸)</label>
+            <input type="number" id="pitch" step="0.1" placeholder="例: 3.5" oninput="calc()">
+
+            <div class="result">
+                <p>登り実寸： <span id="slope-len">0</span> mm</p>
+                <p>隅棟実寸： <span id="hip-len">0</span> mm</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function calc() {
+            const d = parseFloat(document.getElementById('depth').value) || 0;
+            const s = parseFloat(document.getElementById('pitch').value) || 0;
+            
+            if (d > 0 && s > 0) {
+                // 登り実寸計算
+                const slope = d * Math.sqrt(1 + Math.pow(s / 10, 2));
+                // 隅棟実寸計算 (45度の場合)
+                const hip = Math.sqrt(Math.pow(d, 2) * 2 + Math.pow(d * (s/10), 2));
+                
+                document.getElementById('slope-len').innerText = Math.round(slope).toLocaleString();
+                document.getElementById('hip-len').innerText = Math.round(hip).toLocaleString();
+            }
+        }
+    </script>
+</body>
+</html>
