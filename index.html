@@ -3,103 +3,170 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>屋根寸法計算プロ</title>
+    <title>屋根積算アシスト Pro Max</title>
     <style>
-        :root { --primary: #1a73e8; --accent: #d93025; }
-        body { font-family: sans-serif; padding: 15px; background: #f4f7f9; color: #333; }
-        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); max-width: 480px; margin: auto; }
-        h1 { font-size: 1.1rem; text-align: center; color: var(--primary); margin-bottom: 20px; }
-        
-        .input-group { margin-bottom: 15px; }
-        label { display: block; font-size: 0.85rem; font-weight: bold; margin-bottom: 5px; color: #555; }
-        input, select { width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 1rem; }
-        input:focus, select:focus { border-color: var(--primary); outline: none; }
-        
-        .mode-selector { background: #e8f0fe; padding: 10px; border-radius: 8px; margin-bottom: 20px; border: 1px solid var(--primary); }
-        
-        .result-box { background: #fff; border: 2px solid var(--primary); padding: 15px; border-radius: 10px; margin-top: 20px; }
-        .result-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-        .res-label { font-size: 0.85rem; font-weight: bold; }
-        .res-val { font-size: 1.5rem; font-weight: bold; color: var(--primary); }
-        .unit { font-size: 0.8rem; margin-left: 3px; color: #666; }
-        .highlight { color: var(--accent); }
+        :root { --primary: #1a73e8; --dark: #1e293b; --accent: #fbbf24; --success: #34a853; }
+        body { font-family: sans-serif; padding: 15px; background: #f1f3f4; margin: 0; color: #333; }
+        .card { background: white; padding: 20px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); max-width: 500px; margin: auto; }
+        h1 { font-size: 1.1rem; text-align: center; color: var(--primary); margin: 0 0 15px 0; }
+
+        /* 4. 図面表示エリア（ピンチズーム対応） */
+        .upload-section { border: 2px dashed #ccc; padding: 10px; border-radius: 12px; text-align: center; margin-bottom: 15px; background: #fafafa; overflow: hidden; }
+        #preview-container { width: 100%; display: none; margin-top: 10px; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; }
+        #preview { width: 100%; height: auto; display: block; }
+        .upload-label { cursor: pointer; color: var(--primary); font-weight: bold; font-size: 0.9rem; display: block; padding: 10px; }
+
+        /* 入力エリア */
+        .mode-box { background: #e8f0fe; padding: 12px; border-radius: 10px; margin-bottom: 15px; border: 1px solid var(--primary); }
+        select, input { width: 100%; padding: 12px; border-radius: 8px; border: 2px solid #ddd; box-sizing: border-box; font-size: 1rem; }
+        input:focus { border-color: var(--primary); outline: none; background: #f0f7ff; }
+        label { display: block; font-size: 0.8rem; font-weight: bold; margin: 10px 0 5px 0; color: #555; }
+
+        .pitch-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+        /* ボタン */
+        .add-btn { width: 100%; background: var(--success); color: white; border: none; padding: 15px; border-radius: 10px; font-size: 1rem; font-weight: bold; cursor: pointer; margin-top: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .add-btn:active { transform: translateY(1px); }
+
+        /* 結果表示 */
+        .result-display { background: var(--dark); color: white; padding: 15px; border-radius: 12px; margin-top: 15px; }
+        .res-row { display: flex; justify-content: space-between; margin-bottom: 5px; }
+        .res-val { font-size: 1.4rem; font-weight: bold; color: var(--accent); }
+
+        /* 保存リスト */
+        .list-section { margin-top: 25px; border-top: 2px solid #ddd; padding-top: 15px; }
+        .list-item { background: white; padding: 12px; border-radius: 8px; margin-bottom: 10px; border-left: 5px solid var(--primary); font-size: 0.85rem; position: relative; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .delete-btn { position: absolute; right: 10px; top: 10px; color: #999; border: none; background: none; font-size: 1.2rem; cursor: pointer; }
+        .hidden { display: none; }
     </style>
 </head>
 <body>
 
 <div class="card">
-    <h1>屋根寸法シミュレーター</h1>
+    <h1>屋根積算アシスト Pro Max</h1>
 
-    <div class="mode-selector">
-        <label>算出したい数値を選択</label>
-        <select id="calcMode" onchange="calc()">
-            <option value="tenkai">展開寸法 (斜めの実寸を出す)</option>
-            <option value="fuzu">伏図寸法 (水平の合計を出す)</option>
+    <div class="upload-section">
+        <label class="upload-label">
+            📷 図面写真を選択 / 撮影
+            <input type="file" accept="image/*" onchange="previewImage(this)" style="display: none;">
+        </label>
+        <div id="preview-container">
+            <img id="preview" alt="図面プレビュー">
+        </div>
+    </div>
+
+    <div class="mode-box">
+        <label>算出モード</label>
+        <select id="calcMode" onchange="toggleMode()">
+            <option value="standard">通常勾配 (左右同じ)</option>
+            <option value="different">異勾配 (左右で違う)</option>
         </select>
     </div>
 
-    <div class="input-group">
-        <label>外壁の幅（図面の数字）[mm]</label>
-        <input type="number" id="baseDim" placeholder="例: 4550" oninput="calc()">
-    </div>
+    <label>箇所名 (例: 南面, 西谷など)</label>
+    <input type="text" id="label_name" placeholder="名称を入力">
 
-    <div class="input-group">
-        <label>軒の出 [mm]</label>
-        <input type="number" id="nokiDim" value="275" oninput="calc()">
-    </div>
+    <label>水平寸法 (端から端まで) [mm]</label>
+    <input type="number" id="h_dist" placeholder="例: 4825" oninput="calc()">
 
-    <div class="input-group">
+    <div id="singlePitchBox">
         <label>勾配 [寸]</label>
-        <input type="number" id="pitch" value="3.5" step="0.1" oninput="calc()">
+        <input type="number" id="pitch1" value="3.5" step="0.1" oninput="calc()">
     </div>
 
-    <div class="result-box">
-        <div class="result-row">
-            <span class="res-label">水平合計(伏図寸法):</span>
-            <span><span id="horiz_res">0</span><span class="unit">mm</span></span>
+    <div id="multiPitchBox" class="hidden">
+        <div class="pitch-grid">
+            <div>
+                <label>勾配A [寸]</label>
+                <input type="number" id="pitchA" value="3.5" step="0.1" oninput="calc()">
+            </div>
+            <div>
+                <label>勾配B [寸]</label>
+                <input type="number" id="pitchB" value="5.0" step="0.1" oninput="calc()">
+            </div>
         </div>
-        <hr>
-        <div class="result-row">
-            <span id="target_label" class="res-label">算出された寸法:</span>
-            <span><span id="final_res" class="res-val">0</span><span class="unit">mm</span></span>
-        </div>
-        <div class="result-row">
-            <span class="res-label">隅棟・谷の実寸:</span>
-            <span><span id="hip_res" class="res-val highlight">0</span><span class="unit">mm</span></span>
-        </div>
+    </div>
+
+    <div class="result-display">
+        <div class="res-row"><span>登り実寸:</span><span class="res-val" id="slope_res">0 mm</span></div>
+        <div class="res-row"><span>隅棟・谷:</span><span class="res-val" id="hip_res">0 mm</span></div>
+    </div>
+
+    <button class="add-btn" onclick="addToList()">＋ リストに追加</button>
+
+    <div class="list-section">
+        <h3 style="font-size: 0.9rem; margin: 0 0 10px 0;">積算リスト</h3>
+        <div id="calc_list"></div>
     </div>
 </div>
 
 <script>
+    function previewImage(input) {
+        const file = input.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = e => {
+                const img = document.getElementById('preview');
+                const container = document.getElementById('preview-container');
+                img.src = e.target.result;
+                container.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        }
+    }
+
+    function toggleMode() {
+        const isDiff = document.getElementById('calcMode').value === 'different';
+        document.getElementById('singlePitchBox').classList.toggle('hidden', isDiff);
+        document.getElementById('multiPitchBox').classList.toggle('hidden', !isDiff);
+        calc();
+    }
+
     function calc() {
-        const base = parseFloat(document.getElementById('baseDim').value) || 0;
-        const noki = parseFloat(document.getElementById('nokiDim').value) || 0;
-        const pitch = parseFloat(document.getElementById('pitch').value) || 0;
+        const h = parseFloat(document.getElementById('h_dist').value) || 0;
         const mode = document.getElementById('calcMode').value;
+        let pA, pB;
 
-        // 水平合計 (伏図寸法)
-        const totalH = base + noki;
-        document.getElementById('horiz_res').innerText = Math.round(totalH).toLocaleString();
-
-        // 登り実寸係数
-        const slopeFactor = Math.sqrt(1 + Math.pow(pitch / 10, 2));
-        
-        let finalVal = 0;
-        if (mode === 'tenkai') {
-            document.getElementById('target_label').innerText = "展開寸法 (斜め実寸):";
-            finalVal = totalH * slopeFactor;
+        if (mode === 'standard') {
+            pA = pB = parseFloat(document.getElementById('pitch1').value) || 0;
         } else {
-            document.getElementById('target_label').innerText = "伏図寸法 (水平投影):";
-            finalVal = totalH;
+            pA = parseFloat(document.getElementById('pitchA').value) || 0;
+            pB = parseFloat(document.getElementById('pitchB').value) || 0;
         }
 
-        // 隅棟実寸
-        const hipVal = Math.sqrt(Math.pow(totalH, 2) * 2 + Math.pow(totalH * (pitch / 10), 2));
+        if (h > 0) {
+            const slopeA = h * Math.sqrt(1 + Math.pow(pA / 10, 2));
+            const height = h * (pA / 10);
+            const horizB = height / (pB / 10);
+            const hip = Math.sqrt(Math.pow(h, 2) + Math.pow(horizB, 2) + Math.pow(height, 2));
 
-        document.getElementById('final_res').innerText = Math.round(finalVal).toLocaleString();
-        document.getElementById('hip_res').innerText = Math.round(hipVal).toLocaleString();
+            document.getElementById('slope_res').innerText = Math.round(slopeA).toLocaleString() + " mm";
+            document.getElementById('hip_res').innerText = Math.round(hip).toLocaleString() + " mm";
+        }
+    }
+
+    function addToList() {
+        const name = document.getElementById('label_name').value || "未設定";
+        const slope = document.getElementById('slope_res').innerText;
+        const hip = document.getElementById('hip_res').innerText;
+        const dist = document.getElementById('h_dist').value;
+        
+        if (!dist || dist === "0") return;
+
+        const list = document.getElementById('calc_list');
+        const item = document.createElement('div');
+        item.className = 'list-item';
+        item.innerHTML = `
+            <strong>${name}</strong> (水平:${dist}mm)<br>
+            登り: ${slope} / 隅棟: ${hip}
+            <button class="delete-btn" onclick="this.parentElement.remove()">×</button>
+        `;
+        list.prepend(item);
+        
+        // 入力のみクリア（図面は残す）
+        document.getElementById('label_name').value = "";
+        document.getElementById('h_dist').value = "";
     }
 </script>
-
 </body>
 </html>
