@@ -3,98 +3,45 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>屋根実寸計算プロ</title>
+    <title>屋根寸法計算プロ</title>
     <style>
-        :root { --primary-color: #1a73e8; --accent-color: #d93025; --bg-color: #f0f2f5; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 15px; background: var(--bg-color); color: #333; line-height: 1.5; }
-        .card { background: white; padding: 20px; border-radius: 16px; box-shadow: 0 8px 20px rgba(0,0,0,0.1); max-width: 480px; margin: auto; }
-        h1 { font-size: 1.2rem; text-align: center; color: var(--primary-color); margin-bottom: 20px; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        :root { --primary: #1a73e8; --accent: #d93025; }
+        body { font-family: sans-serif; padding: 15px; background: #f4f7f9; color: #333; }
+        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); max-width: 480px; margin: auto; }
+        h1 { font-size: 1.1rem; text-align: center; color: var(--primary); margin-bottom: 20px; }
         
-        .input-section { margin-bottom: 20px; }
         .input-group { margin-bottom: 15px; }
-        label { display: block; font-size: 0.85rem; font-weight: bold; margin-bottom: 6px; color: #444; }
-        input { width: 100%; padding: 14px; border: 2px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 1.1rem; transition: border-color 0.3s; }
-        input:focus { border-color: var(--primary-color); outline: none; background: #f8fbff; }
+        label { display: block; font-size: 0.85rem; font-weight: bold; margin-bottom: 5px; color: #555; }
+        input, select { width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 1rem; }
+        input:focus, select:focus { border-color: var(--primary); outline: none; }
         
-        .helper-text { font-size: 0.75rem; color: #666; margin-top: 5px; padding-left: 2px; }
-        .math-box { background: #fff9db; padding: 10px; border-radius: 8px; font-size: 0.8rem; margin-bottom: 15px; border: 1px solid #fab005; }
-
-        .result-area { background: #e8f0fe; padding: 15px; border-radius: 12px; border: 2px solid var(--primary-color); }
-        .result-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-        .result-row:last-child { margin-bottom: 0; border-top: 1px dashed #abc; pt: 10px; margin-top: 10px; }
-        .res-label { font-size: 0.9rem; font-weight: bold; color: #555; }
-        .res-val { font-size: 1.6rem; font-weight: 900; color: var(--primary-color); }
-        .hip-val { color: var(--accent-color); }
-        .unit { font-size: 0.9rem; margin-left: 4px; color: #666; font-weight: normal; }
+        .mode-selector { background: #e8f0fe; padding: 10px; border-radius: 8px; margin-bottom: 20px; border: 1px solid var(--primary); }
         
-        footer { text-align: center; margin-top: 20px; font-size: 0.7rem; color: #999; }
+        .result-box { background: #fff; border: 2px solid var(--primary); padding: 15px; border-radius: 10px; margin-top: 20px; }
+        .result-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .res-label { font-size: 0.85rem; font-weight: bold; }
+        .res-val { font-size: 1.5rem; font-weight: bold; color: var(--primary); }
+        .unit { font-size: 0.8rem; margin-left: 3px; color: #666; }
+        .highlight { color: var(--accent); }
     </style>
 </head>
 <body>
 
 <div class="card">
-    <h1>屋根実寸計算ツール</h1>
+    <h1>屋根寸法シミュレーター</h1>
 
-    <div class="math-box">
-        <strong>💡 使い方</strong><br>
-        図面の「水平な長さ」と「勾配」を入れるだけで、設計ソフトに入力する「斜めの実寸」を表示します。
+    <div class="mode-selector">
+        <label>算出したい数値を選択</label>
+        <select id="calcMode" onchange="calc()">
+            <option value="tenkai">展開寸法 (斜めの実寸を出す)</option>
+            <option value="fuzu">伏図寸法 (水平の合計を出す)</option>
+        </select>
     </div>
 
-    <div class="input-section">
-        <div class="input-group">
-            <label>1. 図面の水平寸法 (mm)</label>
-            <input type="number" id="h_dist" placeholder="例: 4825" oninput="calc()">
-            <div class="helper-text">※軒先から棟までの「真っ直ぐな距離」を入力</div>
-        </div>
-
-        <div class="input-group">
-            <label>2. 屋根の勾配 (寸)</label>
-            <input type="number" id="pitch" value="3.5" step="0.1" oninput="calc()">
-            <div class="helper-text">※立面図の数字 (3.5寸なら「3.5」)</div>
-        </div>
+    <div class="input-group">
+        <label>外壁の幅（図面の数字）[mm]</label>
+        <input type="number" id="baseDim" placeholder="例: 4550" oninput="calc()">
     </div>
 
-    <div class="result-area">
-        <div class="result-row">
-            <span class="res-label">登り実寸<br><small>(平・桁方向)</small></span>
-            <span><span id="slope_res" class="res-val">0</span><span class="unit">mm</span></span>
-        </div>
-        <div class="result-row">
-            <span class="res-label">隅棟・谷の実寸<br><small>(45度方向)</small></span>
-            <span><span id="hip_res" class="res-val hip-val">0</span><span class="unit">mm</span></span>
-        </div>
-    </div>
-
-    <footer>
-        ※三平方の定理による算出値です。施工誤差は含みません。
-    </footer>
-</div>
-
-<script>
-    function calc() {
-        const h = parseFloat(document.getElementById('h_dist').value) || 0;
-        const s = parseFloat(document.getElementById('pitch').value) || 0;
-
-        if (h > 0) {
-            // 勾配伸び率 (10寸を基準とした斜辺比)
-            // 公式: √ ( 1 + (勾配/10)^2 )
-            const slopeFactor = Math.sqrt(1 + Math.pow(s / 10, 2));
-            
-            // 登り実寸
-            const slopeLen = h * slopeFactor;
-            
-            // 隅棟実寸 (水平投影が√2倍になる)
-            // 公式: √ ( h^2 + h^2 + (h * s/10)^2 )
-            const hipLen = Math.sqrt(Math.pow(h, 2) * 2 + Math.pow(h * (s / 10), 2));
-
-            document.getElementById('slope_res').innerText = Math.round(slopeLen).toLocaleString();
-            document.getElementById('hip_res').innerText = Math.round(hipLen).toLocaleString();
-        } else {
-            document.getElementById('slope_res').innerText = "0";
-            document.getElementById('hip_res').innerText = "0";
-        }
-    }
-</script>
-
-</body>
-</html>
+    <div class="input-group">
+        <label>軒の
