@@ -44,4 +44,62 @@
     </div>
 
     <div class="input-group">
-        <label>軒の
+        <label>軒の出 [mm]</label>
+        <input type="number" id="nokiDim" value="275" oninput="calc()">
+    </div>
+
+    <div class="input-group">
+        <label>勾配 [寸]</label>
+        <input type="number" id="pitch" value="3.5" step="0.1" oninput="calc()">
+    </div>
+
+    <div class="result-box">
+        <div class="result-row">
+            <span class="res-label">水平合計(伏図寸法):</span>
+            <span><span id="horiz_res">0</span><span class="unit">mm</span></span>
+        </div>
+        <hr>
+        <div class="result-row">
+            <span id="target_label" class="res-label">算出された寸法:</span>
+            <span><span id="final_res" class="res-val">0</span><span class="unit">mm</span></span>
+        </div>
+        <div class="result-row">
+            <span class="res-label">隅棟・谷の実寸:</span>
+            <span><span id="hip_res" class="res-val highlight">0</span><span class="unit">mm</span></span>
+        </div>
+    </div>
+</div>
+
+<script>
+    function calc() {
+        const base = parseFloat(document.getElementById('baseDim').value) || 0;
+        const noki = parseFloat(document.getElementById('nokiDim').value) || 0;
+        const pitch = parseFloat(document.getElementById('pitch').value) || 0;
+        const mode = document.getElementById('calcMode').value;
+
+        // 水平合計 (伏図寸法)
+        const totalH = base + noki;
+        document.getElementById('horiz_res').innerText = Math.round(totalH).toLocaleString();
+
+        // 登り実寸係数
+        const slopeFactor = Math.sqrt(1 + Math.pow(pitch / 10, 2));
+        
+        let finalVal = 0;
+        if (mode === 'tenkai') {
+            document.getElementById('target_label').innerText = "展開寸法 (斜め実寸):";
+            finalVal = totalH * slopeFactor;
+        } else {
+            document.getElementById('target_label').innerText = "伏図寸法 (水平投影):";
+            finalVal = totalH;
+        }
+
+        // 隅棟実寸
+        const hipVal = Math.sqrt(Math.pow(totalH, 2) * 2 + Math.pow(totalH * (pitch / 10), 2));
+
+        document.getElementById('final_res').innerText = Math.round(finalVal).toLocaleString();
+        document.getElementById('hip_res').innerText = Math.round(hipVal).toLocaleString();
+    }
+</script>
+
+</body>
+</html>
