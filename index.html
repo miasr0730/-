@@ -3,11 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>屋根積算 AI - 営業速報版（精密ロジック）</title>
+    <title>屋根積算 AI - 各辺寸法特定モデル</title>
     <style>
         :root { --primary: #0284c7; --bg: #f1f5f9; }
-        body { font-family: sans-serif; background: var(--bg); padding: 10px; color: #334155; }
-        .container { background: white; padding: 20 :root { --primary: #0284c7; --bg: #f1f5f9; }
         body { font-family: sans-serif; background: var(--bg); padding: 10px; color: #334155; }
         .container { background: white; padding: 20px; border-radius: 16px; max-width: 600px; margin: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
         .api-input { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 10px; font-size: 0.8rem; box-sizing: border-box; }
@@ -19,7 +17,6 @@
         .btn { width: 100%; padding: 15px; background: #0284c7; color: white; border: none; border-radius: 10px; font-weight: bold; font-size: 1rem; cursor: pointer; }
         #result-area { margin-top: 20px; display: none; }
         
-        /* 【重要】SVG画像の大きさをスマホ画面内に固定する修正 */
         .svg-viewer { 
             background: #1e293b; 
             border-radius: 12px; 
@@ -33,7 +30,7 @@
         .svg-viewer svg { 
             max-width: 100%; 
             height: auto; 
-            max-height: 450px; /* スマホで見やすい高さに制限 */
+            max-height: 500px;
         }
         
         table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
@@ -48,13 +45,13 @@
     <input type="password" id="apiKey" class="api-input" placeholder="Gemini API Key">
 
     <div class="upload-area" onclick="document.getElementById('fileInput').click()">
-        <strong>📷 図面を追加（全方位の立面図・各階平面図）</strong>
+        <strong>📷 図面を追加（立面図・平面図）</strong>
         <input type="file" id="fileInput" multiple accept="image/*" style="display:none;" onchange="addFiles(this)">
     </div>
 
     <div id="thumb-list"></div>
 
-    <button id="runBtn" class="btn" onclick="startAnalysis()">解析実行（精密モード）</button>
+    <button id="runBtn" class="btn" onclick="startAnalysis()">解析実行（各辺個別特定）</button>
     
     <div id="status" style="display:none; text-align:center; padding:10px;"></div>
 
@@ -62,13 +59,13 @@
         <div class="svg-viewer" id="svg-output"></div>
         
         <table>
-            <thead><tr><th>積算項目</th><th>数値 / 判定</th></tr></thead>
+            <thead><tr><th>特定された辺・項目</th><th>長さ / 数値</th></tr></thead>
             <tbody id="table-body"></tbody>
         </table>
 
         <div class="debug-info">
             <details>
-                <summary>🔍 AIの判断根拠（立面・平面の突き合わせログ）</summary>
+                <summary>🔍 寸法導出のプロセス（各辺の計算根拠）</summary>
                 <div id="logic-output" style="white-space: pre-wrap; margin-top:10px;"></div>
             </details>
         </div>
@@ -112,31 +109,33 @@
 
         const status = document.getElementById('status');
         status.style.display = "block";
-        status.innerText = "⏳ 図面を突き合わせ中...";
+        status.innerText = "⏳ 図面から各辺を抽出中...";
 
         try {
             const b64Images = await Promise.all(fileStack.map(file => toBase64(file)));
 
-            const prompt = `あなたは高度な建築積算士です。提供された全ての図面を以下の【精密照合ロジック】で解析し、営業資料用の結果を出力してください。
+            const prompt = `あなたは超精密な建築積算士です。
+屋根の合計サイズではなく、屋根平面を構成する【全ての辺の長さ】を個別に特定してください。
 
-### 1. 三次元的な構造把握
-- **立面図からの逆引き**: まず立面図（東西南北）を見て、屋根がどの高さ（階）に存在するかを視覚的に特定してください。
-- **平面図との突き合わせ**: 立面図で見つけた屋根の接点が、平面図上のどの外壁ライン（外面）に対応するかを垂直投影して特定してください。
-- **階層の自己判定**: 「大屋根」が載っている階の平面図をメインの寸法基準とし、もし「下屋」があれば1階平面図の張り出し部分を基準としてください。
+### 1. 解析の優先順位
+- **辺の個別抽出**: 屋根伏図における「全ての折れ曲がり」を認識し、1本1本の辺（軒先、ケラバ等）をリストアップせよ。
+- **出（で）の個別特定**: 各方位（東西南北）の軒の出・ケラバの出を、立面図の「壁外面から屋根端まで」の目盛りから直接読み取れ。
+- **建物外寸の特定**: 平面図の最大外郭ラインを特定せよ。
 
-### 2. バルコニーと屋根の厳密な区別
-- 平面図に張り出しがあっても、立面図でそこに屋根が描かれていない（バルコニー等の床のみ）場合は、屋根積算のラインから除外すること。
-- 逆に、ポーチなどの柱で支えられた屋根がある場合は、立面図の情報を優先して屋根面積に含めること。
+### 2. 各辺の算出ルール
+- **軒先辺の長さ** = 該当する建物面の幅 ＋ (隣接するケラバの出 × 2 ※切妻の場合など)
+- **ケラバ辺の長さ（平面投影）** = 該当する建物面の奥行 ＋ (隣接する軒の出 × 2)
+- **注意**: バルコニーやポーチ上空に屋根が架かっている場合、その「出」がどの壁面を起点としているか立面図で厳密に確認せよ。
 
 ### 3. 出力指示
-- 屋根伏図（SVG形式、背景透明・線は白）を作成。スマホ画面で見やすいアスペクト比で描画すること。
-- 積算項目（形状、勾配、軒の出、建物最大外寸、面積等）を抽出。
-- 解析ログには、どの立面図とどの平面図を比較して結論を出したか簡潔に記すこと。
+- **屋根伏図（SVG）**: 背景透明・線は白。建物外郭を破線、屋根外郭を実線で描き、全ての辺の横に「L=〇〇」と寸法テキストを配置せよ。
+- **積算テーブル**: 「南側軒先辺」「東側ケラバ辺」など、場所が特定できる名称で長さを出力せよ。
+- **解析ログ**: 各辺の長さを導き出した際の算式（建物寸＋出）をすべて記述せよ。
 
 最後は必ず以下のJSON形式で締めてください。
-%%%JSON_START%%% {"items": [{"name": "項目", "value": "数値"}]} %%%JSON_END%%%`;
+%%%JSON_START%%% {"items": [{"name": "辺の名称", "value": "〇〇mm"}]} %%%JSON_END%%%`;
 
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`, {
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
