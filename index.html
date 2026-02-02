@@ -3,51 +3,79 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>屋根実寸計算機</title>
+    <title>屋根寸法計算プロ</title>
     <style>
-        body { font-family: sans-serif; padding: 20px; background: #f4f7f6; }
-        .card { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; }
-        h1 { font-size: 1.2rem; color: #333; }
-        label { display: block; margin-top: 10px; font-weight: bold; font-size: 0.9rem; }
-        input { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 1rem; }
-        .result { background: #e7f3ff; padding: 10px; margin-top: 15px; border-radius: 4px; border-left: 5px solid #2196F3; }
-        .result p { margin: 5px 0; font-weight: bold; color: #0d47a1; }
+        body { font-family: sans-serif; padding: 20px; background: #f0f2f5; color: #333; }
+        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 500px; margin: auto; }
+        h1 { font-size: 1.1rem; text-align: center; color: #1a73e8; }
+        .input-group { margin-bottom: 15px; }
+        label { display: block; font-size: 0.85rem; font-weight: bold; margin-bottom: 5px; }
+        input, select { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; font-size: 1rem; }
+        .result-box { background: #f8f9fa; border: 2px solid #1a73e8; padding: 15px; border-radius: 8px; margin-top: 20px; }
+        .result-item { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px dotted #ccc; }
+        .val { font-weight: bold; color: #d93025; font-size: 1.2rem; }
+        .unit { font-size: 0.8rem; color: #666; margin-left: 5px; }
     </style>
 </head>
 <body>
-    <h1>屋根実寸計算機 (簡易版)</h1>
-    <div id="roof-container">
-        <div class="card">
-            <label>平面図の幅 (mm) ※壁芯＋軒の出x2</label>
-            <input type="number" id="width" placeholder="例: 9422.5" oninput="calc()">
-            
-            <label>水平奥行 (mm) ※軒先から棟まで</label>
-            <input type="number" id="depth" placeholder="例: 4550" oninput="calc()">
-            
-            <label>勾配 (寸)</label>
-            <input type="number" id="pitch" step="0.1" placeholder="例: 3.5" oninput="calc()">
+    <div class="card">
+        <h1>屋根寸法シミュレーター</h1>
+        
+        <div class="input-group">
+            <label>計算モード</label>
+            <select id="mode" onchange="calc()">
+                <option value="actual">展開寸法 (斜めの実寸を出す)</option>
+                <option value="horizontal">伏図寸法 (水平投影を出す)</option>
+            </select>
+        </div>
 
-            <div class="result">
-                <p>登り実寸： <span id="slope-len">0</span> mm</p>
-                <p>隅棟実寸： <span id="hip-len">0</span> mm</p>
+        <div class="input-group">
+            <label>壁芯からの距離 (mm)</label>
+            <input type="number" id="base" placeholder="例: 4550" oninput="calc()">
+        </div>
+
+        <div class="input-group">
+            <label>軒の出 (mm) ※立面図より</label>
+            <input type="number" id="nokonode" value="275" oninput="calc()">
+        </div>
+
+        <div class="input-group">
+            <label>勾配 (寸) ※立面図より</label>
+            <input type="number" id="pitch" value="3.5" step="0.1" oninput="calc()">
+        </div>
+
+        <div class="result-box">
+            <div class="result-item">
+                <span>水平合計:</span>
+                <span><span id="horiz-total">0</span><span class="unit">mm</span></span>
+            </div>
+            <div class="result-item">
+                <span>算出寸法:</span>
+                <span><span id="final-val" class="val">0</span><span class="unit">mm</span></span>
             </div>
         </div>
     </div>
 
     <script>
         function calc() {
-            const d = parseFloat(document.getElementById('depth').value) || 0;
-            const s = parseFloat(document.getElementById('pitch').value) || 0;
-            
-            if (d > 0 && s > 0) {
-                // 登り実寸計算
-                const slope = d * Math.sqrt(1 + Math.pow(s / 10, 2));
-                // 隅棟実寸計算 (45度の場合)
-                const hip = Math.sqrt(Math.pow(d, 2) * 2 + Math.pow(d * (s/10), 2));
-                
-                document.getElementById('slope-len').innerText = Math.round(slope).toLocaleString();
-                document.getElementById('hip-len').innerText = Math.round(hip).toLocaleString();
+            const base = parseFloat(document.getElementById('base').value) || 0;
+            const noko = parseFloat(document.getElementById('nokonode').value) || 0;
+            const pitch = parseFloat(document.getElementById('pitch').value) || 0;
+            const mode = document.getElementById('mode').value;
+
+            const horizontalTotal = base + noko; // 水平投影距離
+            document.getElementById('horiz-total').innerText = horizontalTotal.toLocaleString();
+
+            let result = 0;
+            if (mode === 'actual') {
+                // 展開寸法 (斜辺)
+                result = horizontalTotal * Math.sqrt(1 + Math.pow(pitch / 10, 2));
+            } else {
+                // 伏図寸法 (水平)
+                result = horizontalTotal;
             }
+
+            document.getElementById('final-val').innerText = Math.round(result).toLocaleString();
         }
     </script>
 </body>
