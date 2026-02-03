@@ -3,153 +3,62 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>屋根積算 AI - 各辺個別特定エディション</title>
+    <title>建築図面解析プロンプト・ジェネレーター</title>
     <style>
-        :root { --primary: #0284c7; --bg: #f8fafc; }
-        body { font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif; background: var(--bg); padding: 20px; color: #1e293b; line-height: 1.6; }
-        .container { background: white; padding: 24px; border-radius: 12px; max-width: 800px; margin: auto; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
-        .api-input { width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; margin-bottom: 16px; box-sizing: border-box; }
-        .upload-area { border: 2px dashed var(--primary); padding: 30px; text-align: center; border-radius: 12px; background: #f0f9ff; cursor: pointer; transition: 0.3s; }
-        .upload-area:hover { background: #e0f2fe; }
-        #thumb-list { display: flex; flex-wrap: wrap; gap: 10px; margin: 15px 0; }
-        .thumb-wrapper { position: relative; width: 80px; height: 80px; border: 1px solid #e2e8f0; border-radius: 6px; overflow: hidden; }
-        .thumb { width: 100%; height: 100%; object-fit: cover; }
-        .del-btn { position: absolute; top: 2px; right: 2px; background: rgba(239, 68, 68, 0.9); color: white; border-radius: 50%; width: 20px; height: 20px; border: none; font-size: 12px; cursor: pointer; }
-        .btn { width: 100%; padding: 16px; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: bold; font-size: 1.1rem; cursor: pointer; transition: 0.2s; }
-        .btn:hover { background: #0369a1; }
-        #result-area { margin-top: 30px; display: none; }
-        .svg-container { background: #0f172a; padding: 20px; border-radius: 12px; display: flex; justify-content: center; margin-bottom: 20px; }
-        svg { max-width: 100%; height: auto; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th { background: #f1f5f9; padding: 12px; text-align: left; font-size: 0.85rem; border-bottom: 2px solid #e2e8f0; }
-        td { padding: 12px; border-bottom: 1px solid #f1f5f9; font-size: 0.95rem; }
-        .logic-box { background: #f8fafc; border-left: 4px solid var(--primary); padding: 15px; font-size: 0.9rem; margin-top: 20px; white-space: pre-wrap; }
+        body { font-family: sans-serif; line-height: 1.6; max-width: 800px; margin: 40px auto; padding: 0 20px; background: #f4f7f9; }
+        .card { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        h1 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; }
+        pre { background: #2d3436; color: #dfe6e9; padding: 20px; border-radius: 5px; overflow-x: auto; white-space: pre-wrap; font-size: 0.9em; }
+        .copy-btn { background: #3498db; color: white; border: none; padding: 12px 24px; border-radius: 4px; cursor: pointer; font-size: 16px; transition: 0.3s; }
+        .copy-btn:hover { background: #2980b9; }
+        .desc { font-size: 0.9em; color: #636e72; margin-bottom: 20px; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h2 style="margin-top:0;">🏠 屋根各辺寸法・積算AI</h2>
-    <input type="password" id="apiKey" class="api-input" placeholder="Gemini API Key を入力">
+<div class="card">
+    <h1>屋根寸法抽出プロンプト</h1>
+    <p class="desc">このコードは、AIに建築図面の「線種」と「立面図との矛盾」をチェックさせ、正確な寸法を出させるためのものです。</p>
+    
+    <button class="copy-btn" onclick="copyPrompt()">プロンプトをコピーする</button>
+    <p id="status" style="color: green; font-weight: bold;"></p>
 
-    <div class="upload-area" onclick="document.getElementById('fileInput').click()">
-        <strong>📁 図面ファイルをアップロード</strong>
-        <p style="font-size:0.8rem; color:#64748b;">平面図・立面図（全方位）を複数選択してください</p>
-        <input type="file" id="fileInput" multiple accept="image/*" style="display:none;" onchange="handleFiles(this)">
-    </div>
+    <pre id="promptCode">
+### 【厳格実行】屋根外郭寸法解析命令
 
-    <div id="thumb-list"></div>
-    <button id="runBtn" class="btn" onclick="analyze()">図面を解析して各辺を特定</button>
-    <div id="status" style="display:none; text-align:center; margin-top:15px; font-weight:bold; color:var(--primary);"></div>
+**役割:** 建築図面解析エキスパート
+**目的:** 太陽光パネル設置検討のため、ベランダ等を除外した「屋根が載る本体構造」の寸法を特定する。
 
-    <div id="result-area">
-        <div class="svg-container" id="svg-output"></div>
-        <div class="logic-box" id="logic-output"></div>
-        <table>
-            <thead><tr><th>特定された辺の名称</th><th>算出寸法 (mm)</th></tr></thead>
-            <tbody id="table-body"></tbody>
-        </table>
-    </div>
+#### Step 0: 線種・構造の解析（視覚的仮説）
+1. 平面図（2階）において、最も太い実線で囲まれた閉鎖領域を「屋内本体（屋根の土台）」と仮定せよ。
+2. その外側の細い実線や二重線は「ベランダ等の外部設備」と仮定せよ。
+
+#### Step 1: テキスト情報による検証
+1. 太線ライン上に「LDK/洋室/サッシ/引違い/開口部/防火設備」があるか確認せよ。
+2. 細線側に「ベランダ/バルコニー/吹抜」があるか確認せよ。
+※これらのキーワードを、構造ライン確定の物理的証拠とせよ。
+
+#### Step 2: 立面図による審判
+1. 平面図で判定した外部設備について、立面図の垂直断面を確認せよ。
+2. ベランダの上に屋根が被っていない場合、その寸法は計算から排除せよ。
+3. 立面図の水平全長と、平面図の特定ピッチの合算が一致することを検証せよ。
+
+#### Step 3: 数値抽出と計算
+1. 屋根がある壁芯ラインのピッチ寸法のみを合計せよ。
+2. 合計式（例: 2025 + 900...）を明記し、最後に「軒の出（両端分）」を足して外寸を算出せよ。
+    </pre>
 </div>
 
 <script>
-    let files = [];
-
-    function handleFiles(input) {
-        Array.from(input.files).forEach(file => {
-            files.push(file);
-            const reader = new FileReader();
-            reader.onload = e => {
-                const div = document.createElement('div');
-                div.className = 'thumb-wrapper';
-                div.innerHTML = `<img src="${e.target.result}" class="thumb"><button class="del-btn" onclick="removeFile(this)">×</button>`;
-                document.getElementById('thumb-list').appendChild(div);
-            };
-            reader.readAsDataURL(file);
-        });
-        document.getElementById('runBtn').innerText = `解析実行（${files.length}枚の図面）`;
-    }
-
-    function removeFile(btn) {
-        const index = Array.from(btn.parentElement.parentElement.children).indexOf(btn.parentElement);
-        files.splice(index, 1);
-        btn.parentElement.remove();
-        document.getElementById('runBtn').innerText = `解析実行（${files.length}枚の図面）`;
-    }
-
-    async function analyze() {
-        const key = document.getElementById('apiKey').value;
-        if(!key || files.length === 0) return alert("APIキーと図面が必要です");
-
-        const status = document.getElementById('status');
-        status.style.display = "block";
-        status.innerText = "🔍 全方位の図面を照合し、各辺の長さを算出中...";
-
-        try {
-            const images = await Promise.all(files.map(f => toBase64(f)));
-            const prompt = `あなたは精密積算士です。屋根の合計面積や外寸合計ではなく、屋根平面図における「各辺の長さ」を1本ずつミリ単位で特定してください。
-
-### 【解析・照合の厳格ルール】
-1. **外壁ラインの特定**: 平面図から建物外郭（外壁外面）の寸法を読み取れ。
-2. **「出（で）」の個別判定**: 
-   - 立面図（東・西・南・北）から、外壁外面から屋根端までの「軒の出」「ケラバの出」を個別に特定せよ。
-   - バルコニー上空に屋根がかかっている場合、立面図の垂直ラインを基準に、屋根がどこまで突き出しているか正確に測れ。
-3. **辺の算出アルゴリズム**:
-   - 軒先辺（東西方向のライン） = 建物幅 ＋（左側のケラバの出 ＋ 右側のケラバの出）
-   - ケラバ辺（南北方向のライン ※平面投影） = 建物奥行 ＋（上側の軒の出 ＋ 下側の軒の出）
-   - 折れ曲がりがある場合は、すべてのセグメントを個別に算出せよ。
-
-### 【出力内容】
-- **解析ログ**: 「南側の軒先辺：建物幅11475mm ＋ 東ケラバ275mm ＋ 西ケラバ275mm ＝ 12025mm」のように、すべての辺に対して計算根拠を明記せよ。
-- **屋根伏図(SVG)**: 背景透明、線は白。建物ライン（破線）と屋根ライン（実線）を描き、各辺の横に「L=〇〇mm」と寸法を書き込め。
-- **データ形式**: 最後に必ず以下のJSONを付けろ。
-%%%JSON_START%%% {"items": [{"name": "南側軒先辺", "value": "12025mm"}, ...]} %%%JSON_END%%%`;
-
-            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ contents: [{ parts: [{ text: prompt }, ...images.map(img => ({ inline_data: { mime_type: "image/jpeg", data: img } }))] }] })
-            });
-
-            const data = await res.json();
-            const text = data.candidates[0].content.parts[0].text;
-
-            document.getElementById('result-area').style.display = 'block';
-            document.getElementById('logic-output').innerText = text.split('%%%')[0];
-            
-            const svgMatch = text.match(/<svg[\s\S]*?<\/svg>/);
-            if(svgMatch) document.getElementById('svg-output').innerHTML = svgMatch[0];
-
-            const jsonMatch = text.match(/%%%JSON_START%%%([\s\S]*?)%%%JSON_END%%%/);
-            if(jsonMatch) {
-                const items = JSON.parse(jsonMatch[1]).items;
-                document.getElementById('table-body').innerHTML = items.map(i => `<tr><td>${i.name}</td><td>${i.value}</td></tr>`).join('');
-            }
-            status.style.display = "none";
-        } catch (e) {
-            status.innerText = "❌ 解析に失敗しました。図面の鮮明度やAPIキーを確認してください。";
-        }
-    }
-
-    function toBase64(file) {
-        return new Promise(resolve => {
-            const reader = new FileReader();
-            reader.onload = e => {
-                const img = new Image();
-                img.src = e.target.result;
-                img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    const max = 1600;
-                    const scale = Math.min(1, max / Math.max(img.width, img.height));
-                    canvas.width = img.width * scale;
-                    canvas.height = img.height * scale;
-                    canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-                    resolve(canvas.toDataURL('image/jpeg', 0.8).split(',')[1]);
-                };
-            };
-            reader.readAsDataURL(file);
+    function copyPrompt() {
+        const text = document.getElementById('promptCode').innerText;
+        navigator.clipboard.writeText(text).then(() => {
+            const status = document.getElementById('status');
+            status.innerText = '✓ コピーされました！AIに貼り付けてください。';
+            setTimeout(() => status.innerText = '', 3000);
         });
     }
 </script>
+
 </body>
 </html>
