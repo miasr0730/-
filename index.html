@@ -3,174 +3,210 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Roof Scan Pro v2.5 - 統合レイアウト版</title>
+    <title>Roof Scan Pro v2.8 - Total Integrated Alpha</title>
     <style>
-        :root { --primary: #1a73e8; --error: #d93025; --bg: #f8f9fa; }
-        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 15px; }
+        :root { --primary: #1a73e8; --error: #d93025; --success: #1e8e3e; --bg: #f8f9fa; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 15px; color: #3c4043; }
         .card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); margin-bottom: 15px; }
         h1 { font-size: 1.1rem; margin: 0 0 15px 0; color: var(--primary); }
-        .upload-label { display: block; border: 2px dashed var(--primary); color: var(--primary); padding: 20px; text-align: center; border-radius: 10px; cursor: pointer; font-weight: bold; }
-        .analyze-btn { width: 100%; background: var(--primary); color: white; padding: 16px; border: none; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; margin-top: 10px; }
-        #masterCanvas { width: 100%; background: #fff; border: 1px solid #ddd; border-radius: 8px; }
-        #logArea { background: #202124; color: #34a853; font-family: monospace; font-size: 0.8rem; padding: 15px; border-radius: 8px; height: 150px; overflow-y: auto; margin-top: 10px; }
-        .summary-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.85rem; }
-        .summary-table th, .summary-table td { border: 1px solid #eee; padding: 8px; text-align: left; }
+        #previewContainer { display: flex; gap: 10px; overflow-x: auto; padding: 10px 0; min-height: 100px; }
+        .thumb-wrapper { position: relative; min-width: 90px; height: 90px; background: #fff; border-radius: 8px; border: 2px solid #dadce0; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+        .thumb-wrapper img { width: 100%; height: 100%; object-fit: cover; }
+        .del-btn { position: absolute; top: 2px; right: 2px; width: 20px; height: 20px; background: rgba(217, 48, 37, 0.9); color: white; border: none; border-radius: 50%; cursor: pointer; font-weight: bold; }
+        .upload-label { display: block; border: 2px dashed var(--primary); color: var(--primary); padding: 25px; text-align: center; border-radius: 10px; cursor: pointer; font-weight: bold; margin-bottom: 10px; background: #e8f0fe; }
+        .analyze-btn { width: 100%; background: var(--primary); color: white; padding: 18px; border: none; border-radius: 8px; font-size: 1.1rem; font-weight: bold; cursor: pointer; transition: opacity 0.2s; }
+        .analyze-btn:disabled { background: #ccc; cursor: not-allowed; }
+        canvas { width: 100%; height: auto; background: #fff; border: 1px solid #ddd; border-radius: 8px; margin-top: 10px; }
+        #logArea { background: #202124; color: #34a853; font-family: 'Courier New', monospace; font-size: 0.8rem; padding: 15px; border-radius: 8px; height: 180px; overflow-y: auto; white-space: pre-wrap; margin-top: 10px; border-left: 5px solid var(--primary); }
+        .summary-table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 0.85rem; }
+        .summary-table th, .summary-table td { border: 1px solid #eee; padding: 10px; text-align: left; }
+        .summary-table th { background: #f8f9fa; color: #5f6368; }
+        .status-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; margin-bottom: 10px; }
     </style>
 </head>
 <body>
 
 <div class="card">
     <h1>🔑 API設定</h1>
-    <input type="password" id="apiKey" style="width:100%; padding:12px; border:1px solid #dadce0; border-radius:8px; box-sizing:border-box;" placeholder="Gemini API Key">
+    <input type="password" id="apiKey" style="width:100%; padding:12px; border:1px solid #dadce0; border-radius:8px; box-sizing:border-box;" placeholder="Gemini API Keyを入力">
 </div>
 
 <div class="card">
-    <h1>📸 図面解析・統合レイアウト</h1>
+    <h1>📸 図面撮影・解析 (複合・統合モード)</h1>
+    <div id="previewContainer"></div>
     <label class="upload-label">
-        📄 図面を追加 (平面/立面)
-        <input type="file" id="fileInput" accept="image/*,application/pdf" style="display:none">
+        📷 図面を追加 (平面・立面を推奨)
+        <input type="file" id="fileInput" accept="image/*,application/pdf" multiple style="display:none">
     </label>
-    <button id="analyzeBtn" class="analyze-btn">統合構造解析を実行</button>
+    <button id="analyzeBtn" class="analyze-btn">統合解析アルゴリズム実行</button>
 </div>
 
 <div class="card" id="resultCard" style="display:none;">
-    <h1>🏠 統合平面投影図 (Master Plan)</h1>
+    <h1>🏠 統合屋根投影図</h1>
+    <div id="slopeInfo" class="status-badge" style="background:var(--success); color:white;"></div>
     <canvas id="masterCanvas"></canvas>
     <div id="summaryArea"></div>
 </div>
 
 <div class="card">
-    <h1>🧠 解析ログ</h1>
-    <div id="logArea">待機中...</div>
+    <h1>🧠 解析ロジック・計算ログ</h1>
+    <div id="logArea">図面をアップロードしてください...</div>
 </div>
 
 <script type="module">
     import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
 
     let selectedFiles = [];
-    const fileInput = document.getElementById('fileInput');
 
-    fileInput.onchange = (e) => {
-        if (e.target.files[0]) selectedFiles.push(e.target.files[0]);
-    };
+    // 画像追加処理の修正
+    document.getElementById('fileInput').addEventListener('change', (e) => {
+        const files = Array.from(e.target.files);
+        files.forEach(file => {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                selectedFiles.push({ file, preview: event.target.result });
+                renderPreviews();
+            };
+            reader.readAsDataURL(file);
+        });
+        e.target.value = ""; // リセット
+    });
+
+    function renderPreviews() {
+        const container = document.getElementById('previewContainer');
+        container.innerHTML = "";
+        selectedFiles.forEach((item, i) => {
+            const div = document.createElement('div');
+            div.className = 'thumb-wrapper';
+            if (item.file.type.includes('image')) {
+                div.innerHTML = `<img src="${item.preview}"><button class="del-btn" data-index="${i}">×</button>`;
+            } else {
+                div.innerHTML = `<span>PDF Document</span><button class="del-btn" data-index="${i}">×</button>`;
+            }
+            container.appendChild(div);
+        });
+    }
+
+    // 削除イベント委譲
+    document.getElementById('previewContainer').addEventListener('click', (e) => {
+        if (e.target.classList.contains('del-btn')) {
+            const idx = e.target.getAttribute('data-index');
+            selectedFiles.splice(idx, 1);
+            renderPreviews();
+        }
+    });
 
     document.getElementById('analyzeBtn').onclick = async () => {
         const apiKey = document.getElementById('apiKey').value;
-        if (!apiKey || selectedFiles.length === 0) return alert("APIキーと図面が必要です");
-
+        if (!apiKey || selectedFiles.length === 0) return alert("APIキーと図面をセットしてください");
+        
+        const btn = document.getElementById('analyzeBtn');
         const logArea = document.getElementById('logArea');
-        logArea.innerText = "--- 統合解析開始 ---";
+        btn.disabled = true;
+        logArea.innerText = "--- 統合解析シーケンス開始 ---";
 
         try {
             const genAI = new GoogleGenerativeAI(apiKey);
             const model = genAI.getGenerativeModel({ 
-                model: "gemini-1.5-flash",
+                model: "gemini-1.5-flash", 
                 generationConfig: { responseMimeType: "application/json" }
             });
 
             const prompt = `
-# 屋根構造統合解析プロトコル
-図面からすべての屋根要素を抽出し、一つの座標系に統合せよ。
+# 建築図面・複合屋根統合解析プロトコル (v2.8)
+## ミッション:
+図面内の全屋根要素を抽出し、それらを一つの座標系（マスタープラン）に統合したデータを作成せよ。
 
-## 厳格ルール
-1. 【居室判定】: LDK/洋室/和室/クローゼット/サッシ等の表記がある壁は「屋内」とし、その上部には必ず屋根を配置せよ。
-2. 【勾配自動取得】: 図面内の「寸」または「/10」表記から勾配を読み取れ。
-3. 【空間座標】: 建物全体の左上を(x:0, y:0)とし、各パーツの開始座標(pos_x, pos_y)を算出せよ。
+## 厳守ルール:
+1. 【居室確認】: 太線の内側に LDK/洋室/和室/クローゼット/サッシ 等の表記があるか確認。これがある壁は「屋内」とし、その上部は屋根が必要なエリアと判定せよ。
+2. 【勾配自動取得】: 図面内の「寸」または「/10」表記、あるいは立面図の勾配サインから数値を読み取れ。
+3. 【流れ方向の算出】: 水平投影距離に対し、検出した勾配の倍率を乗じて「実寸の流れ長さ」を算出せよ。
+4. 【座標統合】: 建物全体の北西端を(0,0)とし、各屋根パーツの配置座標(pos_x, pos_y)を算出せよ。
 
-## 出力JSON形式
+## 出力形式(JSON):
 {
-  "detected_slope": 3.5,
-  "total_width_mm": 建物全体の最大幅,
-  "total_depth_mm": 建物全体の最大奥行,
+  "detected_slope": "3.5寸",
+  "total_width_mm": 建物全体の幅,
+  "total_depth_mm": 建物全体の奥行,
   "planes": [
     {
-      "name": "主屋根",
-      "pos_x": 0,
-      "pos_y": 0,
-      "width_mm": 11475,
-      "depth_mm": 7280,
+      "name": "主屋根 / 下屋 / 玄関ポーチ等",
+      "pos_x": 0, "pos_y": 0,
+      "width_mm": 11475, "depth_mm": 7280,
       "shape": "寄棟/切妻/片流れ",
-      "flow_length_mm": 勾配を加味した流れ方向の長さ,
-      "ridge_mm": 大棟長さ
-    },
-    {
-      "name": "玄関ポーチ",
-      "pos_x": 4550,
-      "pos_y": 7280,
-      "width_mm": 1820,
-      "depth_mm": 910,
-      "shape": "片流れ",
-      "flow_length_mm": 950,
-      "ridge_mm": 0
+      "flow_length_mm": 流れ方向の垂直実寸,
+      "ridge_mm": 大棟長さ,
+      "reasoning": "居室表記等に基づく判定理由"
     }
   ],
-  "log": "解析の根拠（LDK確認、座標計算等）"
+  "calculation_log": "数値の拾い出しと座標決定のプロセス"
 }`;
 
-            const parts = await Promise.all(selectedFiles.map(async f => {
-                const base64 = await new Promise(r => {
-                    const reader = new FileReader();
-                    reader.onloadend = () => r(reader.result.split(',')[1]);
-                    reader.readAsDataURL(f);
-                });
-                return { inlineData: { data: base64, mimeType: f.type } };
+            const parts = await Promise.all(selectedFiles.map(async item => {
+                const base64 = item.preview.split(',')[1];
+                return { inlineData: { data: base64, mimeType: item.file.type } };
             }));
 
             const result = await model.generateContent([prompt, ...parts]);
             const data = JSON.parse(result.response.text());
 
-            drawMasterPlan(data);
-            logArea.innerText = data.log;
+            logArea.innerText = data.calculation_log;
+            renderAll(data);
             document.getElementById('resultCard').style.display = 'block';
 
-        } catch (e) { logArea.innerText += "\n❌ エラー: " + e.message; }
+        } catch (e) { logArea.innerText += `\n❌ エラー: ${e.message}`; }
+        finally { btn.disabled = false; }
     };
 
-    function drawMasterPlan(data) {
+    function renderAll(data) {
+        document.getElementById('slopeInfo').innerText = `検知勾配: ${data.detected_slope}`;
         const canvas = document.getElementById('masterCanvas');
         const ctx = canvas.getContext('2d');
-        canvas.width = 800; canvas.height = 500;
+        canvas.width = 1000; canvas.height = 600;
         
-        const padding = 50;
-        const scale = Math.min((canvas.width - padding*2) / data.total_width_mm, (canvas.height - padding*2) / data.total_depth_mm);
+        const pad = 60;
+        const scale = Math.min((canvas.width - pad*2) / data.total_width_mm, (canvas.height - pad*2) / data.total_depth_mm);
 
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.clearRect(0,0,1000,600);
         
-        data.planes.forEach((p, i) => {
-            const x = padding + p.pos_x * scale;
-            const y = padding + p.pos_y * scale;
+        data.planes.forEach(p => {
+            const x = pad + p.pos_x * scale;
+            const y = pad + p.pos_y * scale;
             const w = p.width_mm * scale;
             const h = p.depth_mm * scale;
 
-            // 屋根の面を描画
-            ctx.strokeStyle = "#1a73e8";
-            ctx.lineWidth = 2;
-            ctx.strokeRect(x, y, w, h);
-            ctx.fillStyle = "rgba(26, 115, 232, 0.1)";
+            // 塗りつぶし
+            ctx.fillStyle = "rgba(26, 115, 232, 0.08)";
             ctx.fillRect(x, y, w, h);
+            
+            // 外枠
+            ctx.strokeStyle = "#1a73e8";
+            ctx.lineWidth = 3;
+            ctx.strokeRect(x, y, w, h);
 
-            // 簡易的な構造線（寄棟の場合）
-            if(p.shape === "寄棟") {
-                const offset = (w - (p.ridge_mm * scale)) / 2;
-                ctx.beginPath();
-                ctx.moveTo(x, y); ctx.lineTo(x + offset, y + h/2);
-                ctx.lineTo(x, y + h);
-                ctx.moveTo(x + w, y); ctx.lineTo(x + w - offset, y + h/2);
-                ctx.lineTo(x + w, y + h);
-                ctx.moveTo(x + offset, y + h/2); ctx.lineTo(x + w - offset, y + h/2);
-                ctx.stroke();
+            // 簡易伏図ライン（寄棟等の構造線）
+            ctx.beginPath();
+            ctx.lineWidth = 1.5;
+            if(p.shape.includes("寄棟")) {
+                const off = (w - (p.ridge_mm * scale)) / 2;
+                ctx.moveTo(x, y); ctx.lineTo(x + off, y + h/2); ctx.lineTo(x, y + h);
+                ctx.moveTo(x + w, y); ctx.lineTo(x + w - off, y + h/2); ctx.lineTo(x + w, y + h);
+                ctx.moveTo(x + off, y + h/2); ctx.lineTo(x + w - off, y + h/2);
+            } else if(p.shape.includes("切妻")) {
+                ctx.moveTo(x, y + h/2); ctx.lineTo(x + w, y + h/2);
             }
+            ctx.stroke();
 
-            // ラベル
+            // 寸法テキスト
             ctx.fillStyle = "#1a73e8";
-            ctx.font = "12px sans-serif";
-            ctx.fillText(`${p.name}: ${p.width_mm}×${p.depth_mm}`, x, y - 5);
+            ctx.font = "bold 14px sans-serif";
+            ctx.fillText(`${p.name}: ${p.width_mm}×${p.depth_mm}`, x, y - 10);
         });
 
-        // 集計テーブル作成
-        let html = `<table class="summary-table"><tr><th>部位</th><th>東西(X)</th><th>南北(Y)</th><th>流れ(垂直)</th><th>形状</th></tr>`;
+        // テーブル生成
+        let html = `<table class="summary-table"><tr><th>構成部位</th><th>東西(X)</th><th>南北(Y)</th><th>流れ(垂直)</th><th>大棟</th></tr>`;
         data.planes.forEach(p => {
-            html += `<tr><td>${p.name}</td><td>${p.width_mm}</td><td>${p.depth_mm}</td><td>${p.flow_length_mm}</td><td>${p.shape}</td></tr>`;
+            html += `<tr><td>${p.name}</td><td>${p.width_mm}mm</td><td>${p.depth_mm}mm</td><td><strong>${p.flow_length_mm}mm</strong></td><td>${p.ridge_mm}mm</td></tr>`;
         });
         html += `</table>`;
         document.getElementById('summaryArea').innerHTML = html;
