@@ -3,236 +3,196 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Roof Scan Pro v1.1 - Gemini 3 Flash</title>
+    <title>Roof Scan Pro v1.2</title>
     <style>
+        /* スタイルは前回を継承し、一部追加 */
         :root { --primary: #1a73e8; --error: #d93025; --bg: #f8f9fa; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); margin: 0; padding: 15px; color: #3c4043; }
+        body { font-family: sans-serif; background: var(--bg); padding: 15px; color: #3c4043; }
         .card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); margin-bottom: 15px; }
-        h1 { font-size: 1.1rem; margin: 0 0 15px 0; color: #1a73e8; display: flex; align-items: center; }
-        
-        /* プレビューエリア */
-        #previewContainer { display: flex; gap: 10px; overflow-x: auto; padding: 10px 0; min-height: 90px; }
-        .thumb-wrapper { position: relative; min-width: 80px; height: 80px; }
+        #previewContainer { display: flex; gap: 10px; overflow-x: auto; padding: 10px 0; }
+        .thumb-wrapper { position: relative; min-width: 80px; }
         .thumb { width: 80px; height: 80px; object-fit: cover; border-radius: 8px; border: 1px solid #dadce0; }
-        .remove-btn { position: absolute; top: -8px; right: -8px; background: var(--error); color: white; border-radius: 50%; width: 24px; height: 24px; border: none; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
-
-        input[type="password"] { width: 100%; padding: 12px; border: 1px solid #dadce0; border-radius: 8px; box-sizing: border-box; margin-bottom: 10px; }
-        .upload-label { display: block; background: #fff; border: 2px dashed #1a73e8; color: #1a73e8; padding: 20px; text-align: center; border-radius: 10px; cursor: pointer; font-weight: 500; margin-bottom: 10px; }
-        
-        .analyze-btn { width: 100%; background: var(--primary); color: white; padding: 16px; border: none; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; transition: background 0.2s; }
-        .analyze-btn:disabled { background: #ccc; cursor: not-allowed; }
-        
-        #resultCard { border-left: 5px solid var(--primary); }
-        .result-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
-        .result-item { background: #e8f0fe; padding: 10px; border-radius: 8px; text-align: center; }
-        .result-label { font-size: 0.75rem; color: #5f6368; }
-        .result-value { font-size: 1.2rem; font-weight: bold; color: var(--primary); }
-
-        #logArea { background: #202124; color: #34a853; font-family: 'Courier New', Courier, monospace; font-size: 0.8rem; padding: 15px; border-radius: 8px; height: 150px; overflow-y: auto; white-space: pre-wrap; margin-top: 10px; line-height: 1.4; }
+        .analyze-btn { width: 100%; background: var(--primary); color: white; padding: 16px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        .analyze-btn:disabled { background: #ccc; }
+        #logArea { background: #202124; color: #34a853; font-size: 0.8rem; padding: 15px; border-radius: 8px; height: 150px; overflow-y: auto; white-space: pre-wrap; margin-top: 10px; }
         canvas { width: 100%; height: auto; background: #fff; border: 1px solid #eee; border-radius: 8px; margin-top: 15px; }
+        .alert { background: #fce8e6; color: var(--error); padding: 15px; border-radius: 8px; border: 1px solid #f9d2ce; margin-bottom: 15px; display: none; }
     </style>
 </head>
 <body>
 
+<div id="errorAlert" class="alert"></div>
+
 <div class="card">
     <h1>🔑 API設定</h1>
-    <input type="password" id="apiKey" placeholder="Gemini API Keyを入力してください">
-    <p style="font-size:0.7rem; color:#70757a; margin:0;">※キーはブラウザにのみ保存されます</p>
+    <input type="password" id="apiKey" placeholder="Gemini API Key">
 </div>
 
 <div class="card">
-    <h1>📸 図面撮影 (平面図 + 立面図)</h1>
+    <h1>📸 図面解析 (画像・PDF対応)</h1>
     <div id="previewContainer"></div>
-    <label class="upload-label">
-        📷 写真を撮影または追加
-        <input type="file" id="fileInput" accept="image/*" style="display:none">
+    <label style="display:block; border:2px dashed var(--primary); padding:20px; text-align:center; cursor:pointer;">
+        📄 ファイルを選択 (画像/PDF)
+        <input type="file" id="fileInput" accept="image/*,application/pdf" style="display:none">
     </label>
-    <button id="analyzeBtn" class="analyze-btn">厳格解析アルゴリズム実行</button>
-    <button id="clearBtn" style="width:100%; background:none; border:none; color:var(--error); margin-top:15px; font-size:0.8rem; cursor:pointer;">全ての写真を削除</button>
+    <button id="analyzeBtn" class="analyze-btn">厳格解析実行</button>
 </div>
 
 <div class="card" id="resultCard" style="display:none;">
-    <h1>📊 解析結果 (芯芯寸法 + 軒)</h1>
-    <div class="result-grid">
-        <div class="result-item">
-            <div class="result-label">X軸 (東西)</div>
-            <div id="valX" class="result-value">--</div>
-        </div>
-        <div class="result-item">
-            <div class="result-label">Y軸 (南北)</div>
-            <div id="valY" class="result-value">--</div>
-        </div>
-    </div>
-    <div id="formulaText" style="font-size:0.85rem; margin-top:10px; color:#5f6368;"></div>
+    <h1>📊 各辺の算出寸法</h1>
+    <div id="formulaText" style="font-size:0.9rem; line-height:1.6;"></div>
     <canvas id="roofCanvas"></canvas>
 </div>
 
 <div class="card">
-    <h1>🧠 AIの思考・判定根拠</h1>
-    <div id="logArea">待機中... 図面をアップロードして「解析」を押してください。</div>
+    <h1>🧠 解析ログ</h1>
+    <div id="logArea">待機中...</div>
 </div>
 
 <script type="module">
     import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
 
     let selectedFiles = [];
-    const fileInput = document.getElementById('fileInput');
-    const previewContainer = document.getElementById('previewContainer');
     const logArea = document.getElementById('logArea');
-    const apiKeyInput = document.getElementById('apiKey');
 
-    // キーの永続化
-    apiKeyInput.value = localStorage.getItem('gemini_key_v1') || '';
-    apiKeyInput.onchange = () => localStorage.setItem('gemini_key_v1', apiKeyInput.value);
+    // --- プリプロセス関数 (Canvasを使用してコントラスト調整) ---
+    async function preprocessImage(file) {
+        if (file.type === 'application/pdf') return file; // PDFはそのまま
 
-    // 写真追加イベント
-    fileInput.onchange = (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        selectedFiles.push(file);
-        renderPreviews();
-        fileInput.value = ""; 
-    };
-
-    function renderPreviews() {
-        previewContainer.innerHTML = "";
-        selectedFiles.forEach((file, index) => {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const div = document.createElement('div');
-                div.className = 'thumb-wrapper';
-                div.innerHTML = `<img src="${e.target.result}" class="thumb"><button class="remove-btn" onclick="removePhoto(${index})">×</button>`;
-                previewContainer.appendChild(div);
+        return new Promise((resolve) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                
+                // グレースケールとコントラスト強化
+                ctx.filter = 'grayscale(1) contrast(1.2)';
+                ctx.drawImage(img, 0, 0);
+                
+                canvas.toBlob((blob) => {
+                    resolve(new File([blob], file.name, { type: 'image/jpeg' }));
+                }, 'image/jpeg', 0.8);
             };
-            reader.readAsDataURL(file);
+            img.src = URL.createObjectURL(file);
         });
     }
 
-    window.removePhoto = (index) => {
-        selectedFiles.splice(index, 1);
+    document.getElementById('fileInput').onchange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        logArea.innerText = "画像を最適化中...";
+        const processedFile = await preprocessImage(file);
+        selectedFiles.push(processedFile);
         renderPreviews();
     };
 
-    document.getElementById('clearBtn').onclick = () => {
-        if(confirm("全ての写真を削除しますか？")) {
-            selectedFiles = [];
-            renderPreviews();
-            document.getElementById('resultCard').style.display = 'none';
-            logArea.innerText = "待機中...";
-        }
-    };
-
-    function log(msg) {
-        logArea.innerText += `\n> ${msg}`;
-        logArea.scrollTop = logArea.scrollHeight;
+    function renderPreviews() {
+        const container = document.getElementById('previewContainer');
+        container.innerHTML = "";
+        selectedFiles.forEach((file, i) => {
+            const div = document.createElement('div');
+            div.className = 'thumb-wrapper';
+            const label = file.type === 'application/pdf' ? '📄 PDF' : '🖼 IMG';
+            div.innerHTML = `<div class="thumb" style="display:flex;align-items:center;justify-content:center;background:#eee;font-size:10px">${label}</div>`;
+            container.appendChild(div);
+        });
     }
 
     document.getElementById('analyzeBtn').onclick = async () => {
-        if (!apiKeyInput.value) return alert("APIキーを入力してください");
-        if (selectedFiles.length === 0) return alert("図面を撮影してください");
+        const apiKey = document.getElementById('apiKey').value;
+        if (!apiKey || selectedFiles.length === 0) return alert("設定を確認してください");
 
         const btn = document.getElementById('analyzeBtn');
+        const alertBox = document.getElementById('errorAlert');
         btn.disabled = true;
-        btn.innerText = "アルゴリズム実行中...";
-        logArea.innerText = "--- 解析開始 (Gemini 3 Flash) ---";
+        alertBox.style.display = 'none';
+        logArea.innerText = "--- 解析中 ---";
 
         try {
-            const genAI = new GoogleGenerativeAI(apiKeyInput.value);
-            const model = genAI.getGenerativeModel({ 
-                model: "gemini-3-flash-preview",
-                generationConfig: { responseMimeType: "application/json" }
-            });
+            const genAI = new GoogleGenerativeAI(apiKey);
+            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
             const prompt = `
-# 建築図面解析・屋根寸法抽出アルゴリズム (v1.1)
-あなたは屋根寸法解析のエキスパートです。以下のステップを厳格に実行し、正確な寸法を算出してください。
+あなたは建築図面解析のエキスパートです。
+1. 図面内のスケール表記（S=1/100, 1/50等）を必ず探し、読み取ったmm単位の数値と矛盾がないか照合してください。
+2. もし画像が不鮮明で数値が確実でない場合は、解析を中止し、error_codeに"BLURRY"と入れてください。
+3. 寄棟屋根の場合、外寸（軒を含む）だけでなく、大棟（水平部）と隅棟（斜め部）の「平面図上の水平長さ」を算出して下さい。
 
-#### Step 0: 線種・構造の解析（視覚的仮説）
-1. 平面図（2階）において、最も太い実線で囲まれた閉鎖領域を「屋内本体（屋根の土台）」とし、その外側にある細い実線や二重線（ベランダ・バルコニー等）を「外部設備」として分離せよ。
-2. 南北軸（Y軸）と東西軸（X軸）の「屋根が載るべき主軸」となる太い実線を特定せよ。
-
-#### Step 1: テキスト情報によるセルフチェック
-1. 太線ライン上に「LDK/洋室/和室/クローゼット/サッシ/開口部」等があるか確認し「屋根が必要な壁」と確定せよ。
-2. 細線側に「ベランダ/バルコニー/吹抜」等があるか確認し「屋根がない空中部分」と仮定せよ。
-
-#### Step 2: 立面図による「屋根の有無」最終審判
-1. 平面図の「外部設備（ベランダ等）」について、必ず立面図（東・西・南・北）と照合せよ。
-2. 立面図の垂直断面で、ベランダの上に「主屋根」が被っているか判定せよ。
-   - 空が見える場合: その寸法は合算から完全に除外する。
-   - 立面図の建物端から端までの水平距離と、平面図のピッチ合計が一致するか照合せよ。
-
-#### Step 3: 厳選された数値の抽出（ピッチ合算）
-1. ステップ2で「屋根がある」と確定した壁芯ラインの個別ピッチ寸法のみを列挙せよ。
-2. 【禁止事項】建物全体の合計寸法線にベランダが含まれている場合は使用せず、必ず内側のピッチ寸法を合算すること。
-
-#### Step 4: 最終計算（外寸算出）
-1. [芯芯寸法]: 抽出したピッチ寸法の合計式を表示せよ。
-2. [入力外寸]: 芯芯寸法に、立面図記載の「軒の出」を両端（x2）加算せよ。
-
-必ず以下のJSON形式でのみ回答してください：
+返却形式 (JSONのみ):
 {
-  "step_logs": "Step0-3までの具体的な判断理由",
+  "error_code": null,
+  "scale_detected": "1/100",
   "width_mm": 数値,
   "height_mm": 数値,
-  "pitch_formula_x": "東西の計算式",
-  "pitch_formula_y": "南北の計算式",
-  "eaves_mm": "軒の出数値",
-  "reason": "ベランダ除外の根拠"
+  "ridge_mm": 大棟の長さ,
+  "hip_horizontal_mm": 隅棟の水平投影長さ,
+  "eaves_mm": 軒の出,
+  "reason": "判断根拠とスケール照合結果"
 }`;
 
-            const imageParts = await Promise.all(selectedFiles.map(file => {
-                return new Promise(resolve => {
+            const parts = await Promise.all(selectedFiles.map(async file => {
+                const base64 = await new Promise(r => {
                     const reader = new FileReader();
-                    reader.onloadend = () => resolve({ inlineData: { data: reader.result.split(',')[1], mimeType: file.type } });
+                    reader.onloadend = () => r(reader.result.split(',')[1]);
                     reader.readAsDataURL(file);
                 });
+                return { inlineData: { data: base64, mimeType: file.type } };
             }));
 
-            const result = await model.generateContent([prompt, ...imageParts]);
-            const data = JSON.parse(result.response.text());
+            const result = await model.generateContent([prompt, ...parts]);
+            const data = JSON.parse(result.response.text().replace(/```json|```/g, ""));
 
-            // UI反映
+            if (data.error_code === "BLURRY") {
+                alertBox.innerText = "⚠️ 図面が不鮮明です。より明るい場所で、数字がはっきり見えるように撮り直してください。";
+                alertBox.style.display = 'block';
+                return;
+            }
+
+            // 結果表示
             document.getElementById('resultCard').style.display = 'block';
-            document.getElementById('valX').innerText = `${data.width_mm}mm`;
-            document.getElementById('valY').innerText = `${data.height_mm}mm`;
             document.getElementById('formulaText').innerHTML = `
-                <strong>東西式:</strong> ${data.pitch_formula_x}<br>
-                <strong>南北式:</strong> ${data.pitch_formula_y}<br>
-                <strong>軒の出:</strong> ${data.eaves_mm}mm
+                <b>スケール:</b> ${data.scale_detected}<br>
+                <b>外寸 (東西×南北):</b> ${data.width_mm}mm × ${data.height_mm}mm<br>
+                <b>大棟の長さ:</b> ${data.ridge_mm}mm<br>
+                <b>隅棟の水平長さ:</b> ${data.hip_horizontal_mm}mm<br>
+                <b>根拠:</b> ${data.reason}
             `;
 
-            log(`[思考ログ]\n${data.step_logs}`);
-            log(`[判定根拠]\n${data.reason}`);
-
-            drawRoof(data.width_mm, data.height_mm);
+            drawRoof(data.width_mm, data.height_mm, data.ridge_mm);
 
         } catch (e) {
-            log(`❌ エラー: ${e.message}`);
+            logArea.innerText += `\n❌ エラー: ${e.message}`;
         } finally {
             btn.disabled = false;
-            btn.innerText = "厳格解析アルゴリズム実行";
         }
     };
 
-    function drawRoof(w, h) {
+    function drawRoof(w, h, ridge) {
         const canvas = document.getElementById('roofCanvas');
         const ctx = canvas.getContext('2d');
         canvas.width = 600; canvas.height = 400;
-        ctx.clearRect(0,0,600,400);
-        
         const scale = Math.min(500/w, 300/h);
         const dw = w * scale; const dh = h * scale;
+        const dridge = ridge * scale;
         const ox = (600-dw)/2; const oy = (400-dh)/2;
 
+        ctx.clearRect(0,0,600,400);
         ctx.strokeStyle = "#1a73e8"; ctx.lineWidth = 3;
-        ctx.strokeRect(ox, oy, dw, dh);
-        ctx.fillStyle = "#1a73e8"; ctx.font = "bold 16px sans-serif";
-        ctx.fillText(`X: ${w}mm`, ox + dw/2 - 30, oy - 10);
-        ctx.save();
-        ctx.translate(ox - 10, oy + dh/2 + 30);
-        ctx.rotate(-Math.PI/2);
-        ctx.fillText(`Y: ${h}mm`, 0, 0);
-        ctx.restore();
+        ctx.strokeRect(ox, oy, dw, dh); // 外寸
+
+        // 構造線
+        ctx.beginPath();
+        ctx.strokeStyle = "#d93025";
+        const offset = (dw - dridge) / 2;
+        ctx.moveTo(ox, oy); ctx.lineTo(ox + offset, oy + dh/2);
+        ctx.moveTo(ox, oy + dh); ctx.lineTo(ox + offset, oy + dh/2);
+        ctx.moveTo(ox + dw, oy); ctx.lineTo(ox + dw - offset, oy + dh/2);
+        ctx.moveTo(ox + dw, oy + dh); ctx.lineTo(ox + dw - offset, oy + dh/2);
+        ctx.moveTo(ox + offset, oy + dh/2); ctx.lineTo(ox + dw - offset, oy + dh/2);
+        ctx.stroke();
     }
 </script>
 </body>
