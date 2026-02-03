@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Roof Scan Pro v4.0 - Polygon Precision Overlay</title>
+    <title>Roof Scan Pro v4.1 - Precision Flow Overlay</title>
     <style>
         :root { --primary: #1a73e8; --error: #d93025; --success: #188038; --bg: #f8f9fa; }
         body { font-family: -apple-system, "Segoe UI", sans-serif; background: var(--bg); margin: 0; padding: 15px; color: #3c4043; }
@@ -41,30 +41,30 @@
             </select>
         </div>
         <div>
-            <label style="font-size:0.8rem; color:#666;">屋根面数 (手入力)</label>
+            <label style="font-size:0.8rem; color:#666;">屋根面数</label>
             <input type="number" id="planeCount" value="4" min="1">
         </div>
     </div>
 </div>
 
 <div class="card">
-    <h1>📸 図面解析 (v4.0 座標・全辺・面数指定)</h1>
+    <h1>📸 図面解析 (v4.1 流れ寸法・座標解析)</h1>
     <div id="previewContainer"></div>
     <label class="upload-label">
         📄 図面・PDFを追加
         <input type="file" id="fileInput" accept="image/*,application/pdf" multiple style="display:none">
     </label>
-    <button id="analyzeBtn" class="analyze-btn">精密解析・ポリゴンオーバーレイ実行</button>
+    <button id="analyzeBtn" class="analyze-btn">精密解析・全辺オーバーレイ実行</button>
 </div>
 
 <div class="card" id="resultCard" style="display:none;">
     <h1>📊 CAD入力用オーバーレイ結果</h1>
     <div>
-        <span class="res-label bg-blue">【水平投影図】CAD入力基本寸法</span>
+        <span class="res-label bg-blue">【平面投影図】水平寸法 ＋ 流れ(平面)</span>
         <canvas id="planCanvas"></canvas>
     </div>
     <div>
-        <span class="res-label bg-red">【実寸図】勾配倍率適用・面積確認用</span>
+        <span class="res-label bg-red">【実寸図】勾配実寸 ＋ 流れ(実寸)</span>
         <canvas id="slopeCanvas"></canvas>
     </div>
     <div id="formulaText"></div>
@@ -109,7 +109,7 @@
         
         const btn = document.getElementById('analyzeBtn');
         btn.disabled = true;
-        btn.innerText = "解析中...（面構造を計算中）";
+        btn.innerText = "解析中...";
 
         try {
             const genAI = new GoogleGenerativeAI(apiKey);
@@ -119,42 +119,42 @@
             });
 
             const prompt = `
-# 屋根積算精密アルゴリズム v4.0 (多角形・全辺数値化)
+# 屋根積算精密アルゴリズム v4.1 (座標・全辺・流れ寸法)
 
 ## 制約条件
 - 屋根型式: ${roofType}
 - 屋根面数: ${planeCount} 面
 
 #### Step 0: 構造把握 (居室基準)
-- ユーザー指定の型式と面数を厳守し、図面から主たる壁芯を特定。
-- L字型等の複合形状は、重なりを除外し、独立した${planeCount}個の多角形(面)として定義。
+- ユーザー指定の型式と面数を厳守。L字型等は重なりを除外し独立した${planeCount}個の多角形として定義。
 
-#### Step 1: 数値の厳格抽出 (1mm単位)
-- 各辺の「水平投影距離」を抽出。内側の寸法線を優先。
-- 閉じた多角形として矛盾がないよう検算せよ。
+#### Step 1: 数値抽出
+- 各辺の水平投影距離(1mm単位)を抽出。
 
 #### Step 2: 軒・けらば出の加算
-- 立面図より軒の出(eaves)・けらば出(gable)を特定。
-- 辺の属性(軒先/けらば)に応じて正確に加算し、最終屋根外周ラインを算出。
+- 立面図から軒の出・けらば出を特定し、外周に加算。
 
-#### Step 3: 辺ごとの実寸算出
-- 各辺を [軒先(eave), けらば(gable), 大棟(ridge), 隅棟(hip), 谷棟(valley)] に分類。
-- 勾配に基づき、水平な辺は1.0倍、流れ方向は勾配倍率、隅・谷は隅倍率を適用。
+#### Step 3: 流れ寸法(Flow)の算出
+- 各屋根面について、軒先から棟(または頂点)へ垂直に降りる「流れ方向」の距離を算出せよ。
+- 平面上の距離(len_plan)と、勾配倍率を掛けた実寸距離(len_actual)の両方を出力せよ。
 
 出力形式(JSON):
 {
   "slope": 3.5,
-  "slope_factor": 1.0595,
   "planes": [
     {
       "id": 1,
-      "vertices": [{"x": 0, "y": 0}, {"x": 5000, "y": 0}, ...],
-      "edges": [
-        {"from": 0, "to": 1, "type": "eave", "len_plan": 5000, "len_actual": 5000}
-      ]
+      "vertices": [{"x": 0, "y": 0}, ...],
+      "edges": [{"from": 0, "to": 1, "type": "eave", "len_plan": 5000, "len_actual": 5000}],
+      "flow": {
+        "start": {"x": 2500, "y": 5000},
+        "end": {"x": 2500, "y": 2500},
+        "len_plan": 2500,
+        "len_actual": 2649
+      }
     }
   ],
-  "step_logs": "解析プロセスの要約。なぜこの数値になったか。"
+  "step_logs": "解析プロセスの要約"
 }`;
 
             const parts = selectedFiles.map(f => ({
@@ -170,71 +170,83 @@
             drawPolygon(data, 'planCanvas', false);
             drawPolygon(data, 'slopeCanvas', true);
 
-        } catch (e) { 
-            alert("エラー: " + e.message); 
-            console.error(e);
-        } finally { 
+        } catch (e) { alert("エラー: " + e.message); }
+        finally { 
             btn.disabled = false; 
-            btn.innerText = "精密解析・ポリゴンオーバーレイ実行";
+            btn.innerText = "精密解析・全周オーバーレイ実行";
         }
     };
 
     function drawPolygon(data, canvasId, isActual) {
         const canvas = document.getElementById(canvasId);
         const ctx = canvas.getContext('2d');
-        canvas.width = 1200; canvas.height = 850;
-        ctx.clearRect(0,0,1200,850);
+        canvas.width = 1200; canvas.height = 900;
+        ctx.clearRect(0,0,1200,900);
 
-        // 1. 全頂点からバウンディングボックスを計算してスケーリング
         let allX = [], allY = [];
         data.planes.forEach(p => p.vertices.forEach(v => { allX.push(v.x); allY.push(v.y); }));
         const minX = Math.min(...allX), maxX = Math.max(...allX);
         const minY = Math.min(...allY), maxY = Math.max(...allY);
         const roofW = maxX - minX, roofH = maxY - minY;
-        const scale = Math.min(1000/roofW, 650/roofH);
+        const scale = Math.min(1000/roofW, 700/roofH);
         const offsetX = (1200 - roofW * scale) / 2 - minX * scale;
-        const offsetY = (850 - roofH * scale) / 2 - minY * scale;
+        const offsetY = (900 - roofH * scale) / 2 - minY * scale;
 
         const color = isActual ? "#d93025" : "#1a73e8";
 
-        // 2. 面（ポリゴン）の描画
         data.planes.forEach(plane => {
+            // 1. 外形線の描画
             ctx.beginPath();
             ctx.strokeStyle = color;
             ctx.lineWidth = 3;
             plane.vertices.forEach((v, i) => {
                 const px = v.x * scale + offsetX;
                 const py = v.y * scale + offsetY;
-                if (i === 0) ctx.moveTo(px, py);
-                else ctx.lineTo(px, py);
+                if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
             });
             ctx.closePath();
             ctx.stroke();
 
-            // 3. 辺のラベル描画
-            ctx.font = "bold 14px sans-serif";
-            ctx.fillStyle = color;
+            // 2. 辺ラベルの描画
+            ctx.font = "bold 13px sans-serif";
             plane.edges.forEach(edge => {
                 const v1 = plane.vertices[edge.from];
                 const v2 = plane.vertices[edge.to] || plane.vertices[0];
-                
-                // 辺の中点を計算
                 const mx = ((v1.x + v2.x) / 2) * scale + offsetX;
                 const my = ((v1.y + v2.y) / 2) * scale + offsetY;
-
                 const val = isActual ? edge.len_actual : edge.len_plan;
-                const label = `${edge.type.toUpperCase()}: ${val}`;
-
-                // 背景白抜きで文字を見やすく
-                const txtW = ctx.measureText(label).width;
-                ctx.fillStyle = "rgba(255,255,255,0.8)";
-                ctx.fillRect(mx - txtW/2 - 2, my - 10, txtW + 4, 18);
-                
-                ctx.fillStyle = color;
-                ctx.textAlign = "center";
-                ctx.fillText(label, mx, my + 4);
+                drawTextLabel(ctx, `${edge.type.toUpperCase()}: ${val}`, mx, my, color);
             });
+
+            // 3. 流れ寸法（垂直方向）の描画 [追加点]
+            if (plane.flow) {
+                const fs = plane.flow.start, fe = plane.flow.end;
+                const sx = fs.x * scale + offsetX, sy = fs.y * scale + offsetY;
+                const ex = fe.x * scale + offsetX, ey = fe.y * scale + offsetY;
+
+                ctx.setLineDash([5, 5]);
+                ctx.beginPath();
+                ctx.moveTo(sx, sy);
+                ctx.lineTo(ex, ey);
+                ctx.strokeStyle = color;
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                const flowVal = isActual ? plane.flow.len_actual : plane.flow.len_plan;
+                const flowLabel = `${isActual ? '実寸' : '平面'}: ${flowVal}`;
+                drawTextLabel(ctx, flowLabel, (sx+ex)/2, (sy+ey)/2, color, true);
+            }
         });
+    }
+
+    function drawTextLabel(ctx, text, x, y, color, isHighlight = false) {
+        ctx.font = isHighlight ? "bold 15px sans-serif" : "12px sans-serif";
+        const tw = ctx.measureText(text).width;
+        ctx.fillStyle = "rgba(255,255,255,0.9)";
+        ctx.fillRect(x - tw/2 - 4, y - 10, tw + 8, 20);
+        ctx.fillStyle = color;
+        ctx.textAlign = "center";
+        ctx.fillText(text, x, y + 5);
     }
 </script>
 </body>
