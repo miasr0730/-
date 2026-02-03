@@ -3,42 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Roof Scan Pro v1.6 - Master Logic</title>
+    <title>Roof Scan Pro v1.7 - Final Strict</title>
     <style>
         :root { --primary: #1a73e8; --error: #d93025; --bg: #f8f9fa; }
         body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 15px; color: #3c4043; }
         .card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); margin-bottom: 15px; }
         h1 { font-size: 1.1rem; margin: 0 0 15px 0; color: var(--primary); }
-        
-        /* プレビュー・削除機能 */
         #previewContainer { display: flex; gap: 10px; overflow-x: auto; padding: 10px 0; min-height: 90px; }
-        .thumb-wrapper { 
-            position: relative; min-width: 80px; height: 80px; 
-            background: #eee; border-radius: 8px; border: 1px solid #dadce0;
-            display: flex; align-items: center; justify-content: center; font-size: 0.7rem;
-        }
-        .del-btn {
-            position: absolute; top: -5px; right: -5px; width: 22px; height: 22px;
-            background: var(--error); color: white; border-radius: 50%; border: none; 
-            cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center;
-        }
-
+        .thumb-wrapper { position: relative; min-width: 80px; height: 80px; background: #eee; border-radius: 8px; border: 1px solid #dadce0; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; }
+        .del-btn { position: absolute; top: -5px; right: -5px; width: 22px; height: 22px; background: var(--error); color: white; border-radius: 50%; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; }
         .upload-label { display: block; border: 2px dashed var(--primary); color: var(--primary); padding: 20px; text-align: center; border-radius: 10px; cursor: pointer; font-weight: bold; margin-bottom: 10px; }
         .analyze-btn { width: 100%; background: var(--primary); color: white; padding: 16px; border: none; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; }
         .analyze-btn:disabled { background: #ccc; }
-
         canvas { width: 100%; height: auto; background: #fff; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 10px; }
         .res-label { display: inline-block; padding: 4px 10px; border-radius: 4px; font-size: 0.8rem; margin-bottom: 5px; color: white; font-weight: bold; }
         .bg-blue { background: var(--primary); }
         .bg-red { background: var(--error); }
-        
-        #logArea { background: #202124; color: #34a853; font-family: monospace; font-size: 0.8rem; padding: 15px; border-radius: 8px; height: 120px; overflow-y: auto; white-space: pre-wrap; margin-top: 10px; }
-        .alert { background: #fce8e6; color: var(--error); padding: 15px; border-radius: 8px; border: 1px solid #f9d2ce; margin-bottom: 15px; display: none; font-weight: bold; }
+        #logArea { background: #202124; color: #34a853; font-family: monospace; font-size: 0.8rem; padding: 15px; border-radius: 8px; height: 150px; overflow-y: auto; white-space: pre-wrap; margin-top: 10px; }
     </style>
 </head>
 <body>
-
-<div id="errorAlert" class="alert"></div>
 
 <div class="card">
     <h1>🔑 API設定</h1>
@@ -46,7 +30,7 @@
 </div>
 
 <div class="card">
-    <h1>📸 図面解析 (PDF/画像)</h1>
+    <h1>📸 図面選択・撮影 (PDF/画像)</h1>
     <div id="previewContainer"></div>
     <label class="upload-label">
         📄 ファイルを追加
@@ -62,7 +46,7 @@
         <canvas id="planCanvas"></canvas>
     </div>
     <div>
-        <span class="res-label bg-red">【実寸法図】3.5寸勾配適用後</span>
+        <span class="res-label bg-red">【実寸法図】3.5寸勾配適用</span>
         <canvas id="slopeCanvas"></canvas>
     </div>
     <div id="formulaText" style="font-size:0.85rem; line-height:1.6; background:#e8f0fe; padding:15px; border-radius:8px;"></div>
@@ -80,37 +64,17 @@
     const logArea = document.getElementById('logArea');
     const fileInput = document.getElementById('fileInput');
 
-    // 削除機能
     window.removeFile = (idx) => {
         selectedFiles.splice(idx, 1);
         renderPreviews();
     };
 
-    // プリプロセス（コントラスト・グレースケール）
-    async function preprocessImage(file) {
-        if (file.type === 'application/pdf') return file;
-        return new Promise((resolve) => {
-            const img = new Image();
-            img.onload = () => {
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
-                canvas.width = img.width; canvas.height = img.height;
-                ctx.filter = 'contrast(1.4) grayscale(1)'; 
-                ctx.drawImage(img, 0, 0);
-                canvas.toBlob(blob => resolve(new File([blob], file.name, {type:'image/jpeg'})), 'image/jpeg', 0.9);
-            };
-            img.src = URL.createObjectURL(file);
-        });
-    }
-
-    fileInput.onchange = async (e) => {
+    fileInput.onchange = (e) => {
         const file = e.target.files[0];
         if (!file) return;
-        logArea.innerText = "最適化中...";
-        const processed = await preprocessImage(file);
-        selectedFiles.push(processed);
+        selectedFiles.push(file);
         renderPreviews();
-        fileInput.value = ""; // リセット
+        fileInput.value = "";
     };
 
     function renderPreviews() {
@@ -126,12 +90,11 @@
 
     document.getElementById('analyzeBtn').onclick = async () => {
         const apiKey = document.getElementById('apiKey').value;
-        if (!apiKey || selectedFiles.length === 0) return alert("APIキーと図面が必要です");
+        if (!apiKey || selectedFiles.length === 0) return alert("APIキーと図面をセットしてください");
         
         const btn = document.getElementById('analyzeBtn');
-        const alertBox = document.getElementById('errorAlert');
-        btn.disabled = true; alertBox.style.display = 'none';
-        logArea.innerText = "--- 解析開始 (gemini-3-flash-preview) ---";
+        btn.disabled = true;
+        logArea.innerText = "--- 解析開始 ---";
 
         try {
             const genAI = new GoogleGenerativeAI(apiKey);
@@ -140,38 +103,40 @@
                 generationConfig: { responseMimeType: "application/json" }
             });
 
-            // ユーザー指定の厳格プロンプトを統合
             const prompt = `
-# 建築図面解析・屋根寸法抽出アルゴリズム (v1.6)
+# 建築図面解析・屋根寸法抽出アルゴリズム (v1.1)
 あなたは屋根寸法解析のエキスパートです。以下のステップを厳格に実行し、正確な寸法を算出してください。
 
 #### Step 0: 線種・構造の解析（視覚的仮説）
-1. 平面図において、最も太い実線で囲まれた閉鎖領域を「屋内本体（屋根の土台）」とし、その外側にある細い実線や二重線（ベランダ等）を「外部設備」として分離せよ。
+1. 平面図（2階）において、最も太い実線で囲まれた閉鎖領域を「屋内本体（屋根の土台）」とし、その外側にある細い実線や二重線（ベランダ・バルコニー等）を「外部設備」として分離せよ。
 2. 南北軸（Y軸）と東西軸（X軸）の「屋根が載るべき主軸」となる太い実線を特定せよ。
 
 #### Step 1: テキスト情報によるセルフチェック
-1. 太線ライン上に「LDK/洋室/サッシ」等があるか確認し「屋根が必要な壁」と確定せよ。
+1. 太線ライン上に「LDK/洋室/サッシ/開口部」等があるか確認し「屋根が必要な壁」と確定せよ。
+2. 細線側に「ベランダ/バルコニー/吹抜」等があるか確認し「屋根がない空中部分」と仮定せよ。
 
 #### Step 2: 立面図による「屋根の有無」最終審判
-1. 平面図の「外部設備（ベランダ等）」について、必ず立面図と照合せよ。
-2. 立面図でベランダの上に「主屋根」が被っているか判定せよ。空が見える場合は合算から除外せよ。
+1. 平面図の「外部設備（ベランダ等）」について、必ず立面図（東・西・南・北）と照合せよ。
+2. 立面図の垂直断面で、ベランダの上に「主屋根」が被っているか判定せよ。
+   - 空が見える場合: その寸法は合算から完全に除外する。
+   - 立面図の建物端から端までの水平距離と、平面図のピッチ合計が一致するか照合せよ。
 
 #### Step 3: 厳選された数値の抽出（ピッチ合算）
-1. ステップ2で確定した壁芯ラインの【個別ピッチ寸法】を全て列挙せよ。
-2. 全体の合計寸法線にベランダが含まれる場合は使用禁止。必ず内側の数値を足すこと。
+1. ステップ2で「屋根がある」と確定した壁芯ラインの個別ピッチ寸法のみを列挙せよ。
+2. 【禁止事項】建物全体の合計寸法線にベランダが含まれている場合は使用せず、必ず内側のピッチ寸法を合算すること。
 
-#### Step 4: 最終計算
-1. [外寸算出]: (ピッチ合計) + (軒の出 × 2)
-2. 画像が不鮮明で読めない場合のみ error_code: "BLURRY" を返せ。
+#### Step 4: 最終計算（外寸算出）
+1. [芯芯寸法]: 算出されたX軸とY軸それぞれの合計値を返せ。
+2. [外寸]: 芯芯寸法 + (軒の出 × 2)
+3. 大棟長さ: 長辺芯芯 - 短辺芯芯
 
 形式(JSON):
 {
-  "error_code": null,
-  "width_mm": 数値,
-  "height_mm": 数値,
+  "width_mm": 外寸X,
+  "height_mm": 外寸Y,
   "ridge_mm": 大棟長さ,
-  "eaves_mm": 軒の出,
-  "step_logs": "Step3・4の計算過程を詳細に記述せよ（例: X軸 2025+900+4050+...）"
+  "eaves_mm": 275,
+  "step_logs": "計算の根拠（例: X軸 2025+900+...）"
 }`;
 
             const parts = await Promise.all(selectedFiles.map(async f => {
@@ -186,13 +151,8 @@
             const result = await model.generateContent([prompt, ...parts]);
             const data = JSON.parse(result.response.text());
 
-            if (data.error_code === "BLURRY") {
-                alertBox.innerText = "⚠️ 図面が不鮮明です。もう一度明るい場所で撮ってください。";
-                alertBox.style.display = 'block'; return;
-            }
-
             document.getElementById('resultCard').style.display = 'block';
-            document.getElementById('formulaText').innerHTML = `<b>計算プロセス:</b><br>${data.step_logs}<br><b>軒の出:</b> ${data.eaves_mm}mm`;
+            document.getElementById('formulaText').innerHTML = `<b>計算根拠:</b><br>${data.step_logs}`;
             
             renderRoofAll(data.width_mm, data.height_mm, data.ridge_mm);
             logArea.innerText += "\n解析完了。";
@@ -218,8 +178,11 @@
 
         ctx.clearRect(0,0,800,400);
         ctx.strokeStyle = isActual ? "#d93025" : "#1a73e8"; ctx.lineWidth = 3;
+        
+        // 外枠
         ctx.strokeRect(ox, oy, dw, dh);
 
+        // 屋根構造線（棟・隅）
         ctx.beginPath();
         ctx.moveTo(ox, oy); ctx.lineTo(ox + offset, oy + dh/2);
         ctx.moveTo(ox, oy + dh); ctx.lineTo(ox + offset, oy + dh/2);
@@ -228,16 +191,19 @@
         ctx.moveTo(ox + offset, oy + dh/2); ctx.lineTo(ox + dw - offset, oy + dh/2);
         ctx.stroke();
 
+        // 寸法ラベル（タイポ修正済み）
         ctx.fillStyle = ctx.strokeStyle; ctx.font = "bold 15px sans-serif"; ctx.textAlign = "center";
         const f_slope = isActual ? 1.0595 : 1.0; 
         const f_hip = isActual ? 1.4569/1.4142 : 1.0; 
 
-        ctx.fillText(`東西(X): ${w}mm`, 400, oy - 15);
-        ctx.fillText(`南北(Y): ${h}mm`, ox - 40, oy + dh/2);
+        ctx.fillText(`X: ${w}mm`, 400, oy - 15);
+        ctx.fillText(`Y: ${h}mm`, ox - 45, oy + dh/2);
         ctx.fillText(`${ridge}mm (大棟)`, 400, oy + dh/2 - 10);
-        ctx.fillText(`${Math.round(h/2 * f_slope)}mm (平側実寸)`, 400, oy + dh/4);
-        const hip_h = Math.sqrt(Math.pow((w-ridge)/2, 2) + Math.pow(h/2, 2));
-        ctx.fillText(`${Math.round(hip_h * f_h)}mm (隅実寸)`, ox + offset/2, oy + dh/4);
+        ctx.fillText(`${Math.round(h/2 * f_slope)}mm (平実寸)`, 400, oy + dh/4);
+        
+        // ここを f_h から f_hip に修正
+        const hip_proj = Math.sqrt(Math.pow((w-ridge)/2, 2) + Math.pow(h/2, 2));
+        ctx.fillText(`${Math.round(hip_proj * f_hip)}mm (隅実寸)`, ox + offset/2, oy + dh/4);
     }
 </script>
 </body>
