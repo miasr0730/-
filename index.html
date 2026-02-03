@@ -3,144 +3,236 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Roof Scan Pro - Gemini 3 Flash</title>
+    <title>Roof Scan Pro v1.1 - Gemini 3 Flash</title>
     <style>
-        :root { --primary: #1a73e8; --bg: #f1f3f4; --text: #202124; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 15px; }
-        .container { max-width: 500px; margin: auto; }
-        .card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.12); margin-bottom: 15px; }
-        h1 { font-size: 1.1rem; margin-top: 0; display: flex; align-items: center; }
-        .status-dot { width: 10px; height: 10px; background: #ccc; border-radius: 50%; margin-right: 8px; }
-        .active { background: #34a853; }
-        input, button { width: 100%; box-sizing: border-box; padding: 12px; margin-top: 10px; border-radius: 8px; border: 1px solid #dadce0; }
-        button { background: var(--primary); color: white; font-weight: bold; border: none; cursor: pointer; transition: 0.2s; }
-        button:active { transform: scale(0.98); }
-        #logArea { background: #000; color: #00ff00; font-family: monospace; font-size: 0.75rem; padding: 10px; border-radius: 8px; height: 120px; overflow-y: auto; margin-top: 10px; }
-        canvas { width: 100%; background: #fff; border: 1px solid #ddd; border-radius: 8px; margin-top: 10px; }
-        .result-val { font-size: 1.2rem; font-weight: bold; color: var(--primary); text-align: center; margin: 10px 0; }
+        :root { --primary: #1a73e8; --error: #d93025; --bg: #f8f9fa; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); margin: 0; padding: 15px; color: #3c4043; }
+        .card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); margin-bottom: 15px; }
+        h1 { font-size: 1.1rem; margin: 0 0 15px 0; color: #1a73e8; display: flex; align-items: center; }
+        
+        /* プレビューエリア */
+        #previewContainer { display: flex; gap: 10px; overflow-x: auto; padding: 10px 0; min-height: 90px; }
+        .thumb-wrapper { position: relative; min-width: 80px; height: 80px; }
+        .thumb { width: 80px; height: 80px; object-fit: cover; border-radius: 8px; border: 1px solid #dadce0; }
+        .remove-btn { position: absolute; top: -8px; right: -8px; background: var(--error); color: white; border-radius: 50%; width: 24px; height: 24px; border: none; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+
+        input[type="password"] { width: 100%; padding: 12px; border: 1px solid #dadce0; border-radius: 8px; box-sizing: border-box; margin-bottom: 10px; }
+        .upload-label { display: block; background: #fff; border: 2px dashed #1a73e8; color: #1a73e8; padding: 20px; text-align: center; border-radius: 10px; cursor: pointer; font-weight: 500; margin-bottom: 10px; }
+        
+        .analyze-btn { width: 100%; background: var(--primary); color: white; padding: 16px; border: none; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; transition: background 0.2s; }
+        .analyze-btn:disabled { background: #ccc; cursor: not-allowed; }
+        
+        #resultCard { border-left: 5px solid var(--primary); }
+        .result-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+        .result-item { background: #e8f0fe; padding: 10px; border-radius: 8px; text-align: center; }
+        .result-label { font-size: 0.75rem; color: #5f6368; }
+        .result-value { font-size: 1.2rem; font-weight: bold; color: var(--primary); }
+
+        #logArea { background: #202124; color: #34a853; font-family: 'Courier New', Courier, monospace; font-size: 0.8rem; padding: 15px; border-radius: 8px; height: 150px; overflow-y: auto; white-space: pre-wrap; margin-top: 10px; line-height: 1.4; }
+        canvas { width: 100%; height: auto; background: #fff; border: 1px solid #eee; border-radius: 8px; margin-top: 15px; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <div class="card">
-        <h1><span id="dot" class="status-dot"></span> 1. API設定</h1>
-        <input type="password" id="apiKey" placeholder="Gemini API Keyを入力">
-    </div>
+<div class="card">
+    <h1>🔑 API設定</h1>
+    <input type="password" id="apiKey" placeholder="Gemini API Keyを入力してください">
+    <p style="font-size:0.7rem; color:#70757a; margin:0;">※キーはブラウザにのみ保存されます</p>
+</div>
 
-    
+<div class="card">
+    <h1>📸 図面撮影 (平面図 + 立面図)</h1>
+    <div id="previewContainer"></div>
+    <label class="upload-label">
+        📷 写真を撮影または追加
+        <input type="file" id="fileInput" accept="image/*" style="display:none">
+    </label>
+    <button id="analyzeBtn" class="analyze-btn">厳格解析アルゴリズム実行</button>
+    <button id="clearBtn" style="width:100%; background:none; border:none; color:var(--error); margin-top:15px; font-size:0.8rem; cursor:pointer;">全ての写真を削除</button>
+</div>
 
-    <div class="card">
-        <h1>2. 図面アップロード</h1>
-        <input type="file" id="fileInput" multiple accept="image/*">
-        <button id="analyzeBtn">屋根解析を実行</button>
+<div class="card" id="resultCard" style="display:none;">
+    <h1>📊 解析結果 (芯芯寸法 + 軒)</h1>
+    <div class="result-grid">
+        <div class="result-item">
+            <div class="result-label">X軸 (東西)</div>
+            <div id="valX" class="result-value">--</div>
+        </div>
+        <div class="result-item">
+            <div class="result-label">Y軸 (南北)</div>
+            <div id="valY" class="result-value">--</div>
+        </div>
     </div>
+    <div id="formulaText" style="font-size:0.85rem; margin-top:10px; color:#5f6368;"></div>
+    <canvas id="roofCanvas"></canvas>
+</div>
 
-    <div class="card" id="resultCard" style="display:none;">
-        <h1>3. 解析結果</h1>
-        <div id="resultText" class="result-val">---</div>
-        <canvas id="roofCanvas"></canvas>
-    </div>
-
-    <div class="card">
-        <h1>4. AI思考プロセス (Debug)</h1>
-        <div id="logArea">待機中...</div>
-    </div>
+<div class="card">
+    <h1>🧠 AIの思考・判定根拠</h1>
+    <div id="logArea">待機中... 図面をアップロードして「解析」を押してください。</div>
 </div>
 
 <script type="module">
-    // Google AI SDK の読み込み
     import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
 
+    let selectedFiles = [];
+    const fileInput = document.getElementById('fileInput');
+    const previewContainer = document.getElementById('previewContainer');
     const logArea = document.getElementById('logArea');
-    const dot = document.getElementById('dot');
-    
-    // APIキーの保存
-    const keyInput = document.getElementById('apiKey');
-    keyInput.value = localStorage.getItem('gemini_key') || '';
-    keyInput.onchange = () => {
-        localStorage.setItem('gemini_key', keyInput.value);
-        dot.classList.add('active');
+    const apiKeyInput = document.getElementById('apiKey');
+
+    // キーの永続化
+    apiKeyInput.value = localStorage.getItem('gemini_key_v1') || '';
+    apiKeyInput.onchange = () => localStorage.setItem('gemini_key_v1', apiKeyInput.value);
+
+    // 写真追加イベント
+    fileInput.onchange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        selectedFiles.push(file);
+        renderPreviews();
+        fileInput.value = ""; 
     };
-    if(keyInput.value) dot.classList.add('active');
 
-    function log(msg) {
-        logArea.innerHTML += `> ${msg}<br>`;
-        logArea.scrollTop = logArea.scrollHeight;
-    }
-
-    // 画像をAIが読める形式に変換
-    async function fileToGenerativePart(file) {
-        const base64EncodedDataPromise = new Promise((resolve) => {
+    function renderPreviews() {
+        previewContainer.innerHTML = "";
+        selectedFiles.forEach((file, index) => {
             const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result.split(',')[1]);
+            reader.onload = (e) => {
+                const div = document.createElement('div');
+                div.className = 'thumb-wrapper';
+                div.innerHTML = `<img src="${e.target.result}" class="thumb"><button class="remove-btn" onclick="removePhoto(${index})">×</button>`;
+                previewContainer.appendChild(div);
+            };
             reader.readAsDataURL(file);
         });
-        return {
-            inlineData: { data: await base64EncodedDataPromise, mimeType: file.type },
-        };
     }
 
-    document.getElementById('analyzeBtn').onclick = async () => {
-        const files = document.getElementById('fileInput').files;
-        if (!files.length) return alert("図面を選択してください");
+    window.removePhoto = (index) => {
+        selectedFiles.splice(index, 1);
+        renderPreviews();
+    };
 
-        log("Gemini 3 Flash 起動中...");
-        const genAI = new GoogleGenerativeAI(keyInput.value);
-        const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" });
-
-        // 指示書（プロンプト）の作成
-        const prompt = `
-        あなたは屋根寸法解析のエキスパートです。添付された平面図と立面図を照合し、以下の手順で屋根の芯芯寸法を算出してください。
-        
-        Step 0: 平面図の太線（壁芯）と細線（ベランダ等）を分離して認識せよ。
-        Step 1: 「開口部」「サッシ」等のテキストに基づき、屋根が載る本体ラインを特定せよ。
-        Step 2: 立面図を確認し、ベランダの上に屋根がない場合はその寸法を徹底的に除外せよ。
-        Step 3: 特定したラインのピッチ寸法を合算せよ。
-        
-        【出力形式】
-        必ず以下のJSON形式のみで回答してください。余計な挨拶は不要です。
-        {
-          "width_mm": 数値,
-          "height_mm": 数値,
-          "reason": "除外した理由の短い説明",
-          "formula": "計算式（例: 2025+910+4050）"
-        }`;
-
-        try {
-            const imageParts = await Promise.all([...files].map(fileToGenerativePart));
-            const result = await model.generateContent([prompt, ...imageParts]);
-            const response = await result.response;
-            const text = response.text();
-            
-            log("AI応答を受信。解析中...");
-            const data = JSON.parse(text.replace(/```json|```/g, ''));
-            
-            displayResult(data);
-        } catch (e) {
-            log("Error: " + e.message);
+    document.getElementById('clearBtn').onclick = () => {
+        if(confirm("全ての写真を削除しますか？")) {
+            selectedFiles = [];
+            renderPreviews();
+            document.getElementById('resultCard').style.display = 'none';
+            logArea.innerText = "待機中...";
         }
     };
 
-    function displayResult(data) {
-        document.getElementById('resultCard').style.display = 'block';
-        document.getElementById('resultText').innerText = `X: ${data.width_mm}mm / Y: ${data.height_mm}mm`;
-        log(`理由: ${data.reason}`);
-        log(`計算式: ${data.formula}`);
+    function log(msg) {
+        logArea.innerText += `\n> ${msg}`;
+        logArea.scrollTop = logArea.scrollHeight;
+    }
 
+    document.getElementById('analyzeBtn').onclick = async () => {
+        if (!apiKeyInput.value) return alert("APIキーを入力してください");
+        if (selectedFiles.length === 0) return alert("図面を撮影してください");
+
+        const btn = document.getElementById('analyzeBtn');
+        btn.disabled = true;
+        btn.innerText = "アルゴリズム実行中...";
+        logArea.innerText = "--- 解析開始 (Gemini 3 Flash) ---";
+
+        try {
+            const genAI = new GoogleGenerativeAI(apiKeyInput.value);
+            const model = genAI.getGenerativeModel({ 
+                model: "gemini-3-flash-preview",
+                generationConfig: { responseMimeType: "application/json" }
+            });
+
+            const prompt = `
+# 建築図面解析・屋根寸法抽出アルゴリズム (v1.1)
+あなたは屋根寸法解析のエキスパートです。以下のステップを厳格に実行し、正確な寸法を算出してください。
+
+#### Step 0: 線種・構造の解析（視覚的仮説）
+1. 平面図（2階）において、最も太い実線で囲まれた閉鎖領域を「屋内本体（屋根の土台）」とし、その外側にある細い実線や二重線（ベランダ・バルコニー等）を「外部設備」として分離せよ。
+2. 南北軸（Y軸）と東西軸（X軸）の「屋根が載るべき主軸」となる太い実線を特定せよ。
+
+#### Step 1: テキスト情報によるセルフチェック
+1. 太線ライン上に「LDK/洋室/和室/クローゼット/サッシ/開口部」等があるか確認し「屋根が必要な壁」と確定せよ。
+2. 細線側に「ベランダ/バルコニー/吹抜」等があるか確認し「屋根がない空中部分」と仮定せよ。
+
+#### Step 2: 立面図による「屋根の有無」最終審判
+1. 平面図の「外部設備（ベランダ等）」について、必ず立面図（東・西・南・北）と照合せよ。
+2. 立面図の垂直断面で、ベランダの上に「主屋根」が被っているか判定せよ。
+   - 空が見える場合: その寸法は合算から完全に除外する。
+   - 立面図の建物端から端までの水平距離と、平面図のピッチ合計が一致するか照合せよ。
+
+#### Step 3: 厳選された数値の抽出（ピッチ合算）
+1. ステップ2で「屋根がある」と確定した壁芯ラインの個別ピッチ寸法のみを列挙せよ。
+2. 【禁止事項】建物全体の合計寸法線にベランダが含まれている場合は使用せず、必ず内側のピッチ寸法を合算すること。
+
+#### Step 4: 最終計算（外寸算出）
+1. [芯芯寸法]: 抽出したピッチ寸法の合計式を表示せよ。
+2. [入力外寸]: 芯芯寸法に、立面図記載の「軒の出」を両端（x2）加算せよ。
+
+必ず以下のJSON形式でのみ回答してください：
+{
+  "step_logs": "Step0-3までの具体的な判断理由",
+  "width_mm": 数値,
+  "height_mm": 数値,
+  "pitch_formula_x": "東西の計算式",
+  "pitch_formula_y": "南北の計算式",
+  "eaves_mm": "軒の出数値",
+  "reason": "ベランダ除外の根拠"
+}`;
+
+            const imageParts = await Promise.all(selectedFiles.map(file => {
+                return new Promise(resolve => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => resolve({ inlineData: { data: reader.result.split(',')[1], mimeType: file.type } });
+                    reader.readAsDataURL(file);
+                });
+            }));
+
+            const result = await model.generateContent([prompt, ...imageParts]);
+            const data = JSON.parse(result.response.text());
+
+            // UI反映
+            document.getElementById('resultCard').style.display = 'block';
+            document.getElementById('valX').innerText = `${data.width_mm}mm`;
+            document.getElementById('valY').innerText = `${data.height_mm}mm`;
+            document.getElementById('formulaText').innerHTML = `
+                <strong>東西式:</strong> ${data.pitch_formula_x}<br>
+                <strong>南北式:</strong> ${data.pitch_formula_y}<br>
+                <strong>軒の出:</strong> ${data.eaves_mm}mm
+            `;
+
+            log(`[思考ログ]\n${data.step_logs}`);
+            log(`[判定根拠]\n${data.reason}`);
+
+            drawRoof(data.width_mm, data.height_mm);
+
+        } catch (e) {
+            log(`❌ エラー: ${e.message}`);
+        } finally {
+            btn.disabled = false;
+            btn.innerText = "厳格解析アルゴリズム実行";
+        }
+    };
+
+    function drawRoof(w, h) {
         const canvas = document.getElementById('roofCanvas');
         const ctx = canvas.getContext('2d');
-        canvas.width = 400; canvas.height = 400;
-        ctx.clearRect(0, 0, 400, 400);
+        canvas.width = 600; canvas.height = 400;
+        ctx.clearRect(0,0,600,400);
         
-        // 簡易描画（アスペクト比を維持して中央に）
-        const ratio = data.width_mm / data.height_mm;
-        const h = 300; const w = 300 * ratio;
-        ctx.strokeStyle = '#1a73e8'; ctx.lineWidth = 4;
-        ctx.strokeRect((400-w)/2, (400-h)/2, w, h);
-        ctx.fillStyle = "#1a73e8"; ctx.font = "16px Arial";
-        ctx.fillText(`${data.width_mm}mm`, 170, (400-h)/2 - 10);
-        ctx.fillText(`${data.height_mm}mm`, (400+w)/2 + 5, 200);
+        const scale = Math.min(500/w, 300/h);
+        const dw = w * scale; const dh = h * scale;
+        const ox = (600-dw)/2; const oy = (400-dh)/2;
+
+        ctx.strokeStyle = "#1a73e8"; ctx.lineWidth = 3;
+        ctx.strokeRect(ox, oy, dw, dh);
+        ctx.fillStyle = "#1a73e8"; ctx.font = "bold 16px sans-serif";
+        ctx.fillText(`X: ${w}mm`, ox + dw/2 - 30, oy - 10);
+        ctx.save();
+        ctx.translate(ox - 10, oy + dh/2 + 30);
+        ctx.rotate(-Math.PI/2);
+        ctx.fillText(`Y: ${h}mm`, 0, 0);
+        ctx.restore();
     }
 </script>
 </body>
