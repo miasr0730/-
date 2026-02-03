@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Roof Scan Pro v3.3 - Ultimate Strict & Precision</title>
+    <title>Roof Scan Pro v3.4 - Full Dimension Overlay</title>
     <style>
         :root { --primary: #1a73e8; --error: #d93025; --bg: #f8f9fa; }
         body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 15px; color: #3c4043; }
@@ -29,13 +29,13 @@
 </div>
 
 <div class="card">
-    <h1>📸 図面精密解析 (v3.3 厳格モード・完全復元版)</h1>
+    <h1>📸 図面精密解析 (v3.4 寸法線階層解析・完全オーバーレイ)</h1>
     <div id="previewContainer"></div>
     <label class="upload-label">
         📄 ファイルを追加
         <input type="file" id="fileInput" accept="image/*,application/pdf" multiple style="display:none">
     </label>
-    <button id="analyzeBtn" class="analyze-btn">厳格精密解析実行</button>
+    <button id="analyzeBtn" class="analyze-btn">厳格精密解析・オーバーレイ実行</button>
 </div>
 
 <div class="card" id="resultCard" style="display:none;">
@@ -83,7 +83,7 @@
 
     document.getElementById('analyzeBtn').onclick = async () => {
         const apiKey = document.getElementById('apiKey').value;
-        if (!apiKey || selectedFiles.length === 0) return alert("APIキーと図面をセットしてください");
+        if (!apiKey || selectedFiles.length === 0) return alert("APIキーと図面が必要です");
         
         const btn = document.getElementById('analyzeBtn');
         btn.disabled = true;
@@ -96,45 +96,37 @@
             });
 
             const prompt = `
-# 建築図面解析・屋根寸法抽出アルゴリズム (v3.3 厳格精密モード)
-あなたは屋根積算のエキスパートです。以下のステップを「一文字も省略せず」実行せよ。
+# 建築図面解析・屋根寸法抽出 (v3.4 厳格精密モード)
+## Step 0: 屋根が必要な壁の特定 (最優先)
+- 平面図の太線ライン付近の注記（LDK/洋室等）を確認し、主屋根が載るべき「壁芯」を特定せよ。
 
-#### Step 0: 屋根が必要な壁の特定 (最重要)
-1. 平面図の太線ライン付近に「LDK/洋室/和室/クローゼット/サッシ/開口部」等の注記があるか確認せよ。これがある壁は「屋内（屋根の土台）」と確定せよ。
-2. 「ベランダ」「バルコニー」等は、必ず立面図（東・西・南・北）と照合し、主屋根が被っているか判定せよ。空が見える場合は除外せよ。
+## Step 1: 寸法線の階層解析と数値取得
+- **【重要】** 平面図の枠外にある寸法線の「一番内側の数値（壁芯寸法）」を正しく読み取れ。
+- 外側にある合計値や、別階（バルコニー等）の寸法線を合算しないよう厳重に注意せよ。
+- Y軸が 4500mm の場合、それに無関係な 1800mm 等を足すのは誤りである。
 
-#### Step 1: 勾配の自動検出
-- 図面から「○寸」「○/10」「○.00」という勾配表記を探せ。
+## Step 2: 軒の出の強制加算
+- 立面図から「軒の出（eaves）」の数値を特定（例: 275mm）。
+- 屋根外寸 = 壁芯寸法 + (軒の出 × 2)。
 
-#### Step 2: 複合構造の統合と数値死守
-- 建物全体の左上を原点(0,0)とし、各パーツ（主屋根、ポーチ、下屋）を配置せよ。
-- 【絶対ルール】ピクセル比率での推定を禁止する。図面上のY軸寸法テキストを最優先で読み取れ。
-- 立面図から「軒の出(eaves)」の数値を探し、東西(X)・南北(Y)それぞれに(軒の出×2)を加算せよ。
-  - 計算例: 外寸 = 壁芯合計 + (軒の出 × 2)
-
-#### Step 3: 幾何計算
-- 勾配係数 $f_{slope} = \sqrt{1^2 + (\text{勾配}/10)^2}$
-- 実寸流れ = 水平投影距離 × $f_{slope}$
-- 隅実寸 = $\sqrt{\text{実寸流れ}^2 + \text{水平投影距離}^2}$
+## Step 3: 幾何計算
+- 勾配係数 $f_{slope}$, 隅勾配係数 $f_{hip}$ を用いて、流れ・大棟・隅棟の「平面」と「実寸」を算出せly。
 
 形式(JSON):
 {
   "detected_slope": 3.5,
   "eaves_mm": 275,
   "slope_factor": 1.0595,
-  "total_width_mm": 11475,
-  "total_depth_mm": 7280,
+  "hip_factor": 1.4569,
   "planes": [
     {
       "name": "主屋根",
-      "width_mm": 11475, "depth_mm": 7280, "ridge_mm": 4195,
-      "flow_plane_mm": 3640,
-      "flow_actual_mm": 3857,
-      "hip_actual_mm": 3679,
+      "width_mm": 11475, "depth_mm": 5050, "ridge_mm": 6425,
+      "flow_plane_mm": 2525, "flow_actual_mm": 2675, "hip_actual_mm": 3678,
       "shape": "寄棟"
     }
   ],
-  "step_logs": "1. 勾配判定... 2. X軸算出... 3. Y軸算出(テキスト死守)... 4. 軒の出加算..."
+  "step_logs": "1. Y軸判定: 内側寸法線より壁芯4500mmを特定。 2. 軒の出275mm×2を加算し5050mmと算出。"
 }`;
 
             const parts = selectedFiles.map(f => ({
@@ -145,78 +137,82 @@
             const data = JSON.parse(result.response.text());
 
             document.getElementById('resultCard').style.display = 'block';
-            document.getElementById('slopeLabel').innerText = `【実寸法図】${data.detected_slope}寸勾配適用`;
-            document.getElementById('formulaText').innerHTML = `<b>AIの計算ログ:</b>\n${data.step_logs}`;
+            document.getElementById('formulaText').innerHTML = `<b>AIの解析プロセス:</b>\n${data.step_logs}`;
             
             drawLayer(data, 'planCanvas', false);
             drawLayer(data, 'slopeCanvas', true);
 
-        } catch (e) { alert("解析エラー: " + e.message); }
+        } catch (e) { alert("エラー: " + e.message); }
         finally { btn.disabled = false; }
     };
 
     function drawLayer(data, canvasId, isActual) {
         const canvas = document.getElementById(canvasId);
         const ctx = canvas.getContext('2d');
-        canvas.width = 1200; canvas.height = 700;
+        canvas.width = 1200; canvas.height = 750;
         
         const p = data.planes[0];
-        const scale = Math.min(1000/p.width_mm, 500/p.depth_mm);
+        const scale = Math.min(1000/p.width_mm, 550/p.depth_mm);
         const dw = p.width_mm * scale;
         const dh = p.depth_mm * scale;
         const ox = (1200-dw)/2;
-        const oy = (700-dh)/2;
+        const oy = (750-dh)/2;
         const color = isActual ? "#d93025" : "#1a73e8";
 
-        ctx.clearRect(0,0,1200,700);
+        ctx.clearRect(0,0,1200,750);
         ctx.strokeStyle = color;
         ctx.lineWidth = 3;
 
-        // 外枠
+        // 外枠（軒先・ケラバ）
         ctx.strokeRect(ox, oy, dw, dh);
 
-        // 構造線
+        // 寄棟構造線
         const ridge_w = p.ridge_mm * scale;
         const offset = (dw - ridge_w) / 2;
         ctx.beginPath();
-        ctx.moveTo(ox, oy); ctx.lineTo(ox + offset, oy + dh/2); ctx.lineTo(ox, oy + dh);
-        ctx.moveTo(ox + dw, oy); ctx.lineTo(ox + dw - offset, oy + dh/2); ctx.lineTo(ox + dw, oy + dh);
+        // 隅棟 4本
+        ctx.moveTo(ox, oy); ctx.lineTo(ox + offset, oy + dh/2);
+        ctx.moveTo(ox, oy + dh); ctx.lineTo(ox + offset, oy + dh/2);
+        ctx.moveTo(ox + dw, oy); ctx.lineTo(ox + dw - offset, oy + dh/2);
+        ctx.moveTo(ox + dw, oy + dh); ctx.lineTo(ox + dw - offset, oy + dh/2);
+        // 大棟
         ctx.moveTo(ox + offset, oy + dh/2); ctx.lineTo(ox + dw - offset, oy + dh/2);
         ctx.stroke();
 
-        // 補助点線 (十字)
-        ctx.setLineDash([8, 8]);
-        ctx.lineWidth = 1.5;
+        // 補助点線（流れ方向）
+        ctx.setLineDash([6, 6]);
         ctx.beginPath();
         ctx.moveTo(ox + dw/2, oy); ctx.lineTo(ox + dw/2, oy + dh);
         ctx.moveTo(ox, oy + dh/2); ctx.lineTo(ox + dw, oy + dh/2);
         ctx.stroke();
         ctx.setLineDash([]);
 
-        // ラベル描画
+        // 寸法ラベル描画
         ctx.fillStyle = color;
         ctx.font = "bold 18px sans-serif";
         ctx.textAlign = "center";
 
-        // X/Y外寸
-        ctx.fillText(`${p.name} X: ${p.width_mm}`, ox + dw/2, oy - 20);
+        // X(軒先) / Y(ケラバ)
+        ctx.fillText(`X(軒先): ${p.width_mm}mm`, ox + dw/2, oy - 25);
         ctx.save();
-        ctx.translate(ox - 30, oy + dh/2);
+        ctx.translate(ox - 40, oy + dh/2);
         ctx.rotate(-Math.PI/2);
-        ctx.fillText(`Y: ${p.depth_mm}`, 0, 0);
+        ctx.fillText(`Y(ケラバ): ${p.depth_mm}mm`, 0, 0);
         ctx.restore();
 
+        // 構造詳細ラベル
         if (isActual) {
-            // 赤色：実寸表示 (ご希望のレイアウト通り)
-            ctx.fillText(`流れ: ${p.flow_actual_mm}mm`, ox + dw/2, oy + dh/4);
-            ctx.fillText(`大棟: ${p.ridge_mm}mm`, ox + dw/2, oy + dh/2 - 10);
-            ctx.font = "16px sans-serif";
-            ctx.fillText(`${p.hip_actual_mm}`, ox + offset/2 - 20, oy + dh/4); // 隅実寸
-            ctx.fillText(`${p.hip_actual_mm}`, ox + dw - offset/2 + 20, oy + dh*0.75); // 隅実寸(逆側)
+            ctx.fillText(`大棟: ${p.ridge_mm}mm`, ox + dw/2, oy + dh/2 - 12);
+            ctx.fillText(`流れ実寸: ${p.flow_actual_mm}mm`, ox + dw/2, oy + dh/4);
+            // 隅棟 4箇所表示
+            ctx.font = "15px sans-serif";
+            const h_val = p.hip_actual_mm;
+            ctx.fillText(h_val, ox + offset/3, oy + dh/6);
+            ctx.fillText(h_val, ox + offset/3, oy + dh - dh/6);
+            ctx.fillText(h_val, ox + dw - offset/3, oy + dh/6);
+            ctx.fillText(h_val, ox + dw - offset/3, oy + dh - dh/6);
         } else {
-            // 青色：平面表示
-            ctx.fillText(`流れ寸法(平面)`, ox + dw/2 + 100, oy + dh/2 - 40);
-            ctx.fillText(`${p.flow_plane_mm}`, ox + dw/2 + 100, oy + dh/2 - 15);
+            ctx.fillText(`流れ(平面): ${p.flow_plane_mm}mm`, ox + dw/2 + 100, oy + dh/2 - 20);
         }
     }
 </script>
