@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Roof Scan Pro v3.0 - Ultimate Strict Mode</title>
+    <title>Roof Scan Pro v3.3 - Ultimate Strict & Precision</title>
     <style>
-        :root { --primary: #1a73e8; --error: #d93025; --bg: #f8f9fa; --success: #1e8e3e; }
+        :root { --primary: #1a73e8; --error: #d93025; --bg: #f8f9fa; }
         body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 15px; color: #3c4043; }
         .card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); margin-bottom: 15px; }
         h1 { font-size: 1.1rem; margin: 0 0 15px 0; color: var(--primary); }
@@ -14,13 +14,11 @@
         .thumb-wrapper img { width: 100%; height: 100%; object-fit: cover; }
         .upload-label { display: block; border: 2px dashed var(--primary); color: var(--primary); padding: 20px; text-align: center; border-radius: 10px; cursor: pointer; font-weight: bold; margin-bottom: 10px; }
         .analyze-btn { width: 100%; background: var(--primary); color: white; padding: 16px; border: none; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; }
-        .analyze-btn:disabled { background: #ccc; }
+        canvas { width: 100%; height: auto; background: #fff; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 15px; }
         .res-label { display: inline-block; padding: 4px 10px; border-radius: 4px; font-size: 0.8rem; margin-bottom: 5px; color: white; font-weight: bold; }
         .bg-blue { background: var(--primary); }
         .bg-red { background: var(--error); }
-        canvas { width: 100%; height: auto; background: #fff; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 15px; }
-        #logArea { background: #202124; color: #34a853; font-family: monospace; font-size: 0.8rem; padding: 15px; border-radius: 8px; height: 150px; overflow-y: auto; white-space: pre-wrap; margin-top: 10px; }
-        #formulaText { font-size: 0.85rem; line-height: 1.6; background: #e8f0fe; padding: 15px; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid var(--primary); }
+        #formulaText { font-size: 0.85rem; line-height: 1.6; background: #f1f3f4; padding: 15px; border-radius: 8px; border-left: 4px solid var(--primary); white-space: pre-wrap; }
     </style>
 </head>
 <body>
@@ -31,13 +29,13 @@
 </div>
 
 <div class="card">
-    <h1>📸 図面選択・撮影 (複合・統合解析)</h1>
+    <h1>📸 図面精密解析 (v3.3 厳格モード・完全復元版)</h1>
     <div id="previewContainer"></div>
     <label class="upload-label">
-        📄 ファイルを追加 (画像/PDF)
+        📄 ファイルを追加
         <input type="file" id="fileInput" accept="image/*,application/pdf" multiple style="display:none">
     </label>
-    <button id="analyzeBtn" class="analyze-btn">厳格統合解析アルゴリズム実行</button>
+    <button id="analyzeBtn" class="analyze-btn">厳格精密解析実行</button>
 </div>
 
 <div class="card" id="resultCard" style="display:none;">
@@ -53,16 +51,10 @@
     <div id="formulaText"></div>
 </div>
 
-<div class="card">
-    <h1>🧠 思考プロセス・計算ログ</h1>
-    <div id="logArea">待機中...</div>
-</div>
-
 <script type="module">
     import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
 
     let selectedFiles = [];
-    const logArea = document.getElementById('logArea');
     const fileInput = document.getElementById('fileInput');
 
     fileInput.onchange = (e) => {
@@ -81,7 +73,7 @@
     function renderPreviews() {
         const container = document.getElementById('previewContainer');
         container.innerHTML = "";
-        selectedFiles.forEach((f, i) => {
+        selectedFiles.forEach(f => {
             const div = document.createElement('div');
             div.className = 'thumb-wrapper';
             div.innerHTML = f.file.type.includes('image') ? `<img src="${f.data}">` : `📄 PDF`;
@@ -95,7 +87,6 @@
         
         const btn = document.getElementById('analyzeBtn');
         btn.disabled = true;
-        logArea.innerText = "--- 厳格解析シーケンス開始 ---";
 
         try {
             const genAI = new GoogleGenerativeAI(apiKey);
@@ -105,38 +96,45 @@
             });
 
             const prompt = `
-# 建築図面解析・屋根統合寸法抽出 (v3.0 厳格モード)
-あなたは屋根寸法解析のエキスパートです。以下の手順を完遂し、複合的な屋根構造を一つの座標系で出力せよ。
+# 建築図面解析・屋根寸法抽出アルゴリズム (v3.3 厳格精密モード)
+あなたは屋根積算のエキスパートです。以下のステップを「一文字も省略せず」実行せよ。
 
 #### Step 0: 屋根が必要な壁の特定 (最重要)
-- 平面図の太線ライン付近に「LDK/洋室/和室/クローゼット/サッシ/開口部」等の注記があるか確認せよ。
-- これらがある箇所は「屋内」であり、必ずその上部に屋根を配置すること。
-- 「ベランダ」「バルコニー」等は、立面図で主屋根が被っているか厳密に確認せよ。
+1. 平面図の太線ライン付近に「LDK/洋室/和室/クローゼット/サッシ/開口部」等の注記があるか確認せよ。これがある壁は「屋内（屋根の土台）」と確定せよ。
+2. 「ベランダ」「バルコニー」等は、必ず立面図（東・西・南・北）と照合し、主屋根が被っているか判定せよ。空が見える場合は除外せよ。
 
 #### Step 1: 勾配の自動検出
-- 図面から「○寸」「○/10」という勾配表記を探せ。見当たらない場合は3.5寸と仮定せよ。
+- 図面から「○寸」「○/10」「○.00」という勾配表記を探せ。
 
-#### Step 2: 複合構造の分解と配置
-- 建物全体の左上を原点(0,0)とし、各屋根パーツ（主屋根、下屋、ポーチ等）の座標(pos_x, pos_y)と寸法を特定せよ。
+#### Step 2: 複合構造の統合と数値死守
+- 建物全体の左上を原点(0,0)とし、各パーツ（主屋根、ポーチ、下屋）を配置せよ。
+- 【絶対ルール】ピクセル比率での推定を禁止する。図面上のY軸寸法テキストを最優先で読み取れ。
+- 立面図から「軒の出(eaves)」の数値を探し、東西(X)・南北(Y)それぞれに(軒の出×2)を加算せよ。
+  - 計算例: 外寸 = 壁芯合計 + (軒の出 × 2)
+
+#### Step 3: 幾何計算
+- 勾配係数 $f_{slope} = \sqrt{1^2 + (\text{勾配}/10)^2}$
+- 実寸流れ = 水平投影距離 × $f_{slope}$
+- 隅実寸 = $\sqrt{\text{実寸流れ}^2 + \text{水平投影距離}^2}$
 
 形式(JSON):
 {
   "detected_slope": 3.5,
+  "eaves_mm": 275,
   "slope_factor": 1.0595,
-  "total_width_mm": 建物全体の最大幅,
-  "total_depth_mm": 建物全体の最大奥行,
+  "total_width_mm": 11475,
+  "total_depth_mm": 7280,
   "planes": [
     {
       "name": "主屋根",
-      "pos_x": 0, "pos_y": 0,
-      "width_mm": 11475, "depth_mm": 7280,
-      "ridge_mm": 4195,
-      "shape": "寄棟/切妻/片流れ",
-      "flow_length_mm": 勾配適用後の流れ長さ,
-      "reasoning": "LDK等の注記に基づく判定理由"
+      "width_mm": 11475, "depth_mm": 7280, "ridge_mm": 4195,
+      "flow_plane_mm": 3640,
+      "flow_actual_mm": 3857,
+      "hip_actual_mm": 3679,
+      "shape": "寄棟"
     }
   ],
-  "step_logs": "計算の根拠（例: X軸 2025+900+...）"
+  "step_logs": "1. 勾配判定... 2. X軸算出... 3. Y軸算出(テキスト死守)... 4. 軒の出加算..."
 }`;
 
             const parts = selectedFiles.map(f => ({
@@ -148,69 +146,78 @@
 
             document.getElementById('resultCard').style.display = 'block';
             document.getElementById('slopeLabel').innerText = `【実寸法図】${data.detected_slope}寸勾配適用`;
-            document.getElementById('formulaText').innerHTML = `<b>AIの計算ログ:</b><br>${data.step_logs.replace(/\n/g, '<br>')}`;
+            document.getElementById('formulaText').innerHTML = `<b>AIの計算ログ:</b>\n${data.step_logs}`;
             
-            renderRoof(data, 'planCanvas', false);
-            renderRoof(data, 'slopeCanvas', true);
-            logArea.innerText += "\n解析完了。";
+            drawLayer(data, 'planCanvas', false);
+            drawLayer(data, 'slopeCanvas', true);
 
-        } catch (e) { logArea.innerText += `\n❌ エラー: ${e.message}`; }
+        } catch (e) { alert("解析エラー: " + e.message); }
         finally { btn.disabled = false; }
     };
 
-    function renderRoof(data, canvasId, isActual) {
+    function drawLayer(data, canvasId, isActual) {
         const canvas = document.getElementById(canvasId);
         const ctx = canvas.getContext('2d');
-        canvas.width = 1000; canvas.height = 500;
+        canvas.width = 1200; canvas.height = 700;
         
-        const pad = 60;
-        const scale = Math.min((canvas.width - pad*2) / data.total_width_mm, (canvas.height - pad*2) / data.total_depth_mm);
-        const factor = isActual ? data.slope_factor : 1.0;
-        const hip_factor = isActual ? Math.sqrt(Math.pow(data.slope_factor, 2) + 1) / Math.sqrt(2) : 1.0;
+        const p = data.planes[0];
+        const scale = Math.min(1000/p.width_mm, 500/p.depth_mm);
+        const dw = p.width_mm * scale;
+        const dh = p.depth_mm * scale;
+        const ox = (1200-dw)/2;
+        const oy = (700-dh)/2;
+        const color = isActual ? "#d93025" : "#1a73e8";
 
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
-        data.planes.forEach(p => {
-            const x = pad + p.pos_x * scale;
-            const y = pad + p.pos_y * scale;
-            const w = p.width_mm * scale;
-            const h = p.depth_mm * scale;
+        ctx.clearRect(0,0,1200,700);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 3;
 
-            ctx.strokeStyle = isActual ? "#d93025" : "#1a73e8";
-            ctx.lineWidth = 3;
-            ctx.strokeRect(x, y, w, h);
+        // 外枠
+        ctx.strokeRect(ox, oy, dw, dh);
 
-            // 構造線
-            ctx.beginPath();
-            if(p.shape.includes("寄棟")) {
-                const off = (w - (p.ridge_mm * scale)) / 2;
-                ctx.moveTo(x, y); ctx.lineTo(x + off, y + h/2); ctx.lineTo(x, y + h);
-                ctx.moveTo(x + w, y); ctx.lineTo(x + w - off, y + h/2); ctx.lineTo(x + w, y + h);
-                ctx.moveTo(x + off, y + h/2); ctx.lineTo(x + w - off, y + h/2);
-            } else if(p.shape.includes("切妻")) {
-                ctx.moveTo(x, y + h/2); ctx.lineTo(x + w, y + h/2);
-            }
-            ctx.stroke();
+        // 構造線
+        const ridge_w = p.ridge_mm * scale;
+        const offset = (dw - ridge_w) / 2;
+        ctx.beginPath();
+        ctx.moveTo(ox, oy); ctx.lineTo(ox + offset, oy + dh/2); ctx.lineTo(ox, oy + dh);
+        ctx.moveTo(ox + dw, oy); ctx.lineTo(ox + dw - offset, oy + dh/2); ctx.lineTo(ox + dw, oy + dh);
+        ctx.moveTo(ox + offset, oy + dh/2); ctx.lineTo(ox + dw - offset, oy + dh/2);
+        ctx.stroke();
 
-            // オーバーレイ寸法表示
-            ctx.fillStyle = ctx.strokeStyle;
-            ctx.font = "bold 13px sans-serif";
-            ctx.textAlign = "center";
-            
-            // X/Y寸法
-            ctx.fillText(`${p.name} X: ${p.width_mm}`, x + w/2, y - 10);
-            ctx.save();
-            ctx.translate(x - 10, y + h/2);
-            ctx.rotate(-Math.PI/2);
-            ctx.fillText(`Y: ${p.depth_mm}`, 0, 0);
-            ctx.restore();
+        // 補助点線 (十字)
+        ctx.setLineDash([8, 8]);
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(ox + dw/2, oy); ctx.lineTo(ox + dw/2, oy + dh);
+        ctx.moveTo(ox, oy + dh/2); ctx.lineTo(ox + dw, oy + dh/2);
+        ctx.stroke();
+        ctx.setLineDash([]);
 
-            // 流れ/大棟/隅の実寸表示
-            if(isActual) {
-                ctx.fillText(`流れ: ${Math.round(p.flow_length_mm)}mm`, x + w/2, y + h/4);
-                if(p.ridge_mm > 0) ctx.fillText(`大棟: ${p.ridge_mm}mm`, x + w/2, y + h/2 - 5);
-            }
-        });
+        // ラベル描画
+        ctx.fillStyle = color;
+        ctx.font = "bold 18px sans-serif";
+        ctx.textAlign = "center";
+
+        // X/Y外寸
+        ctx.fillText(`${p.name} X: ${p.width_mm}`, ox + dw/2, oy - 20);
+        ctx.save();
+        ctx.translate(ox - 30, oy + dh/2);
+        ctx.rotate(-Math.PI/2);
+        ctx.fillText(`Y: ${p.depth_mm}`, 0, 0);
+        ctx.restore();
+
+        if (isActual) {
+            // 赤色：実寸表示 (ご希望のレイアウト通り)
+            ctx.fillText(`流れ: ${p.flow_actual_mm}mm`, ox + dw/2, oy + dh/4);
+            ctx.fillText(`大棟: ${p.ridge_mm}mm`, ox + dw/2, oy + dh/2 - 10);
+            ctx.font = "16px sans-serif";
+            ctx.fillText(`${p.hip_actual_mm}`, ox + offset/2 - 20, oy + dh/4); // 隅実寸
+            ctx.fillText(`${p.hip_actual_mm}`, ox + dw - offset/2 + 20, oy + dh*0.75); // 隅実寸(逆側)
+        } else {
+            // 青色：平面表示
+            ctx.fillText(`流れ寸法(平面)`, ox + dw/2 + 100, oy + dh/2 - 40);
+            ctx.fillText(`${p.flow_plane_mm}`, ox + dw/2 + 100, oy + dh/2 - 15);
+        }
     }
 </script>
 </body>
