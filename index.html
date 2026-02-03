@@ -3,24 +3,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Roof Scan Pro v1.3 - Gemini 3 Flash</title>
+    <title>Roof Scan Pro v1.4</title>
     <style>
-        :root { --primary: #1a73e8; --error: #d93025; --bg: #f8f9fa; --success: #188038; }
+        :root { --primary: #1a73e8; --error: #d93025; --bg: #f8f9fa; }
         body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 15px; color: #3c4043; }
         .card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); margin-bottom: 15px; }
-        h1 { font-size: 1.1rem; margin: 0 0 15px 0; color: var(--primary); display: flex; align-items: center; }
-        #previewContainer { display: flex; gap: 10px; overflow-x: auto; padding: 10px 0; min-height: 50px; }
-        .thumb-wrapper { min-width: 80px; height: 40px; background: #eee; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; border: 1px solid #dadce0; }
+        h1 { font-size: 1.1rem; margin: 0 0 15px 0; color: var(--primary); }
+        
+        /* プレビューエリア */
+        #previewContainer { display: flex; gap: 10px; overflow-x: auto; padding: 10px 0; min-height: 100px; }
+        .thumb-wrapper { 
+            position: relative; min-width: 80px; height: 80px; 
+            background: #eee; border-radius: 8px; border: 1px solid #dadce0;
+            display: flex; align-items: center; justify-content: center; font-size: 0.7rem;
+        }
+        /* 削除ボタン */
+        .del-btn {
+            position: absolute; top: -5px; right: -5px; width: 22px; height: 22px;
+            background: var(--error); color: white; border-radius: 50%;
+            border: none; cursor: pointer; font-weight: bold; font-size: 12px;
+            display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
         .upload-label { display: block; background: #fff; border: 2px dashed var(--primary); color: var(--primary); padding: 20px; text-align: center; border-radius: 10px; cursor: pointer; font-weight: bold; margin-bottom: 10px; }
         .analyze-btn { width: 100%; background: var(--primary); color: white; padding: 16px; border: none; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; }
         .analyze-btn:disabled { background: #ccc; }
-        #logArea { background: #202124; color: #34a853; font-family: monospace; font-size: 0.8rem; padding: 15px; border-radius: 8px; height: 120px; overflow-y: auto; white-space: pre-wrap; margin-top: 10px; }
-        .canvas-container { margin-top: 15px; }
-        canvas { width: 100%; height: auto; background: #fff; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 10px; }
-        .alert { background: #fce8e6; color: var(--error); padding: 15px; border-radius: 8px; border: 1px solid #f9d2ce; margin-bottom: 15px; display: none; font-weight: bold; }
-        .res-label { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; margin-bottom: 5px; color: white; }
+        
+        #logArea { background: #202124; color: #34a853; font-family: monospace; font-size: 0.8rem; padding: 15px; border-radius: 8px; height: 100px; overflow-y: auto; white-space: pre-wrap; margin-top: 10px; }
+        canvas { width: 100%; height: auto; background: #fff; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 15px; }
+        .res-label { display: inline-block; padding: 4px 10px; border-radius: 4px; font-size: 0.8rem; margin-bottom: 5px; color: white; font-weight: bold; }
         .bg-blue { background: var(--primary); }
         .bg-red { background: var(--error); }
+        .alert { background: #fce8e6; color: var(--error); padding: 15px; border-radius: 8px; border: 1px solid #f9d2ce; margin-bottom: 15px; display: none; }
     </style>
 </head>
 <body>
@@ -33,26 +47,183 @@
 </div>
 
 <div class="card">
-    <h1>📸 図面解析 (画像・PDF対応)</h1>
+    <h1>📸 図面選択・撮影</h1>
     <div id="previewContainer"></div>
     <label class="upload-label">
-        📄 図面ファイルを選択 (画像/PDF)
+        📄 ファイルを追加 (画像/PDF)
         <input type="file" id="fileInput" accept="image/*,application/pdf" style="display:none">
     </label>
     <button id="analyzeBtn" class="analyze-btn">厳格解析アルゴリズム実行</button>
 </div>
 
 <div class="card" id="resultCard" style="display:none;">
-    <h1>📊 解析結果・寸法オーバーレイ</h1>
-    
-    <div class="canvas-container">
+    <h1>📊 解析結果</h1>
+    <div>
         <span class="res-label bg-blue">【平面投影図】水平寸法</span>
         <canvas id="planCanvas"></canvas>
     </div>
-
-    <div class="canvas-container">
-        <span class="res-label bg-red">【実寸法図】3.5寸勾配適用後</span>
+    <div>
+        <span class="res-label bg-red">【実寸法図】3.5寸勾配適用</span>
         <canvas id="slopeCanvas"></canvas>
     </div>
+    <div id="formulaText" style="font-size:0.85rem; line-height:1.5; background:#f1f3f4; padding:15px; border-radius:8px;"></div>
+</div>
 
-    <div id="formulaText" style="font-size:
+<div class="card">
+    <h1>🧠 解析ログ</h1>
+    <div id="logArea">待機中...</div>
+</div>
+
+<script type="module">
+    import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
+
+    let selectedFiles = [];
+    const logArea = document.getElementById('logArea');
+    const fileInput = document.getElementById('fileInput');
+
+    // 画像削除機能
+    window.removeFile = (index) => {
+        selectedFiles.splice(index, 1);
+        renderPreviews();
+        logArea.innerText = "ファイルを削除しました。";
+    };
+
+    // プリプロセス（視認性向上）
+    async function preprocessImage(file) {
+        if (file.type === 'application/pdf') return file;
+        return new Promise((resolve) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = img.width; canvas.height = img.height;
+                ctx.filter = 'contrast(1.3) grayscale(0.3)'; 
+                ctx.drawImage(img, 0, 0);
+                canvas.toBlob(blob => resolve(new File([blob], file.name, {type:'image/jpeg'})), 'image/jpeg', 0.9);
+            };
+            img.src = URL.createObjectURL(file);
+        });
+    }
+
+    fileInput.onchange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        logArea.innerText = "ファイルを最適化中...";
+        const processed = await preprocessImage(file);
+        selectedFiles.push(processed);
+        
+        renderPreviews();
+        fileInput.value = ""; // 同じファイル名を連続で選べるようにリセット
+        logArea.innerText = "追加完了。解析ボタンを押してください。";
+    };
+
+    function renderPreviews() {
+        const container = document.getElementById('previewContainer');
+        container.innerHTML = "";
+        selectedFiles.forEach((file, i) => {
+            const div = document.createElement('div');
+            div.className = 'thumb-wrapper';
+            const label = file.type === 'application/pdf' ? "📄 PDF" : "🖼 IMG";
+            div.innerHTML = `
+                ${label}
+                <button class="del-btn" onclick="removeFile(${i})">×</button>
+            `;
+            container.appendChild(div);
+        });
+    }
+
+    document.getElementById('analyzeBtn').onclick = async () => {
+        const apiKey = document.getElementById('apiKey').value;
+        if (!apiKey || selectedFiles.length === 0) return alert("設定を確認してください");
+        
+        const btn = document.getElementById('analyzeBtn');
+        const alertBox = document.getElementById('errorAlert');
+        btn.disabled = true;
+        alertBox.style.display = 'none';
+        logArea.innerText = "--- 解析中 (Gemini 3 Flash Preview) ---";
+
+        try {
+            const genAI = new GoogleGenerativeAI(apiKey);
+            const model = genAI.getGenerativeModel({ 
+                model: "gemini-3-flash-preview",
+                generationConfig: { responseMimeType: "application/json" }
+            });
+
+            const prompt = `図面から屋根外寸（壁芯+軒の出×2）、大棟、隅棟の水平投影長を算出せよ。JSON形式で返せ。
+            {"width_mm":数値, "height_mm":数値, "ridge_mm":数値, "eaves_mm":数値, "step_logs":"計算過程", "error_code":null}`;
+
+            const parts = await Promise.all(selectedFiles.map(async file => {
+                const base64 = await new Promise(r => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => r(reader.result.split(',')[1]);
+                    reader.readAsDataURL(file);
+                });
+                return { inlineData: { data: base64, mimeType: file.type } };
+            }));
+
+            const result = await model.generateContent([prompt, ...parts]);
+            const data = JSON.parse(result.response.text());
+
+            if (data.error_code === "BLURRY") {
+                alertBox.innerText = "⚠️ 不鮮明です。数字がはっきり写るように撮り直してください。";
+                alertBox.style.display = 'block';
+                return;
+            }
+
+            document.getElementById('resultCard').style.display = 'block';
+            document.getElementById('formulaText').innerHTML = `<b>計算根拠:</b> ${data.step_logs}<br><b>軒の出:</b> ${data.eaves_mm}mm`;
+
+            renderRoofAll(data.width_mm, data.height_mm, data.ridge_mm);
+            logArea.innerText += "\n解析完了。";
+
+        } catch (e) {
+            logArea.innerText += `\n❌ エラー: ${e.message}`;
+        } finally {
+            btn.disabled = false;
+        }
+    };
+
+    function renderRoofAll(w, h, ridge) {
+        drawRoof('planCanvas', w, h, ridge, false);
+        drawRoof('slopeCanvas', w, h, ridge, true);
+    }
+
+    function drawRoof(id, w, h, ridge, isActual) {
+        const canvas = document.getElementById(id);
+        const ctx = canvas.getContext('2d');
+        canvas.width = 800; canvas.height = 400;
+        const scale = Math.min(600/w, 300/h);
+        const dw = w * scale; const dh = h * scale;
+        const dridge = ridge * scale;
+        const ox = (canvas.width-dw)/2; const oy = (canvas.height-dh)/2;
+        const offset = (dw - dridge)/2;
+
+        ctx.clearRect(0,0,800,400);
+        ctx.strokeStyle = isActual ? "#d93025" : "#1a73e8"; ctx.lineWidth = 3;
+        ctx.strokeRect(ox, oy, dw, dh);
+
+        // 構造線
+        ctx.beginPath();
+        ctx.moveTo(ox, oy); ctx.lineTo(ox + offset, oy + dh/2);
+        ctx.moveTo(ox, oy + dh); ctx.lineTo(ox + offset, oy + dh/2);
+        ctx.moveTo(ox + dw, oy); ctx.lineTo(ox + dw - offset, oy + dh/2);
+        ctx.moveTo(ox + dw, oy + dh); ctx.lineTo(ox + dw - offset, oy + dh/2);
+        ctx.moveTo(ox + offset, oy + dh/2); ctx.lineTo(ox + dw - offset, oy + dh/2);
+        ctx.stroke();
+
+        // 寸法表示 (3.5寸係数: 平1.0595, 隅1.4569)
+        ctx.fillStyle = ctx.strokeStyle; ctx.font = "bold 15px sans-serif"; ctx.textAlign = "center";
+        const f_s = isActual ? 1.0595 : 1.0;
+        const f_h = isActual ? 1.4569/1.4142 : 1.0; // 投影長比率
+
+        ctx.fillText(`X: ${w}mm`, 400, oy - 10);
+        ctx.fillText(`${ridge}mm (大棟)`, 400, oy + dh/2 - 5);
+        ctx.fillText(`${Math.round(h/2 * f_s)}mm (平)`, 400, oy + dh/4);
+        
+        const hip_proj = Math.sqrt(Math.pow((w-ridge)/2, 2) + Math.pow(h/2, 2));
+        ctx.fillText(`${Math.round(hip_proj * f_h)}mm (隅)`, ox + offset/2, oy + dh/4);
+    }
+</script>
+</body>
+</html>
