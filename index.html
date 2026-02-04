@@ -1,145 +1,212 @@
-<div class="card">
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roof Scan Pro v4.6 (Strict Precision Mode)</title>
+    <style>
+        body { font-family: sans-serif; background: #f0f2f5; padding: 20px; color: #333; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .input-style { width: 100%; padding: 10px; margin: 8px 0; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        .select-style { width: 100%; padding: 10px; border-radius: 4px; border: 1px solid #ccc; }
+        .btn-primary { background: #1a73e8; color: white; border: none; padding: 15px; border-radius: 4px; cursor: pointer; width: 100%; font-size: 16px; font-weight: bold; }
+        .btn-primary:hover { background: #1557b0; }
+        #previewContainer { display: flex; gap: 10px; flex-wrap: wrap; min-height: 50px; border: 2px dashed #ddd; padding: 15px; border-radius: 8px; background: #fafafa; }
+        .thumb-wrapper { position: relative; width: 100px; height: 100px; }
+        .thumb-wrapper img { width: 100%; height: 100%; object-fit: cover; border-radius: 4px; border: 1px solid #ddd; }
+        .remove-btn { position: absolute; top: -5px; right: -5px; background: #d93025; color: white; border-radius: 50%; width: 20px; height: 20px; text-align: center; line-height: 18px; cursor: pointer; font-size: 12px; }
+        canvas { width: 100%; height: auto; border: 1px solid #333; background: #fff; margin-top: 10px; }
+        h3 { margin-top: 0; border-left: 4px solid #1a73e8; padding-left: 10px; }
+    </style>
+</head>
+<body>
 
-    <label>🏠 屋根形状を選択:</label>
+    <div class="card">
+        <h3>🔑 システム設定</h3>
+        <label>Gemini API Key:</label>
+        <input type="password" id="apiKey" placeholder="AI解析用のAPIキーを入力" class="input-style">
+        
+        <div style="display: flex; gap: 15px; margin-top: 10px;">
+            <div style="flex: 2;">
+                <label>🏠 屋根形状:</label>
+                <select id="roofType" class="select-style">
+                    <option value="寄棟">寄棟 (Hip)</option>
+                    <option value="切妻">切妻 (Gable)</option>
+                    <option value="片流れ">片流れ (Shed)</option>
+                    <option value="方形">方形 (Pyramid)</option>
+                    <option value="陸屋根">陸屋根 (Flat)</option>
+                    <option value="腰折">腰折 (Gambrel)</option>
+                    <option value="入母屋">入母屋 (Irimoya)</option>
+                    <option value="半切妻">半切妻 (Jerkinhead)</option>
+                    <option value="複合屋根" selected>複合屋根 (Complex)</option>
+                </select>
+            </div>
+            <div style="flex: 1;">
+                <label>🔢 指定面数:</label>
+                <input type="number" id="planeCount" value="4" class="input-style" min="1">
+            </div>
+        </div>
+    </div>
 
-    <select id="roofType" class="select-style">
+    <div class="card">
+        <h3>📁 図面アップロード（複数可）</h3>
+        <p style="font-size: 12px; color: #666;">※平面図と立面図をセットでアップすると精度が向上します。</p>
+        <input type="file" id="fileInput" accept="image/*" multiple class="input-style">
+        <div id="previewContainer"></div>
+    </div>
 
-        <option value="寄棟">寄棟 (Hip)</option>
+    <button id="analyzeBtn" class="btn-primary">精密解析を実行</button>
 
-        <option value="切妻">切妻 (Gable)</option>
+    <div class="card" id="resultArea" style="display:none;">
+        <h3>📊 解析結果：水平投影図 (Plan)</h3>
+        <canvas id="planCanvas"></canvas>
+        
+        <h3>📐 解析結果：勾配実寸図 (Actual)</h3>
+        <canvas id="slopeCanvas"></canvas>
 
-        <option value="片流れ">片流れ (Shed)</option>
-
-        <option value="方形">方形 (Pyramid)</option>
-
-        <option value="陸屋根">陸屋根 (Flat)</option>
-
-        <option value="腰折">腰折 (Gambrel)</option>
-
-        <option value="入母屋">入母屋 (Irimoya)</option>
-
-        <option value="半切妻">半切妻 (Jerkinhead)</option>
-
-        <option value="複合屋根" selected>複合屋根 (Complex)</option>
-
-    </select>
-
-</div>
-
-
+        <div id="logArea" style="margin-top:20px; font-size: 14px; background: #f8f9fa; padding: 10px; border-radius: 4px; white-space: pre-wrap;"></div>
+    </div>
 
 <script>
+    let allUploadedFiles = []; // 蓄積用配列
 
-// 形状別・追加制約 (v4.6)
+    // 画像アップロード・プレビュー（上書きせず追加）
+    document.getElementById('fileInput').onchange = (e) => {
+        const files = Array.from(e.target.files);
+        const container = document.getElementById('previewContainer');
+        
+        files.forEach(file => {
+            const reader = new FileReader();
+            reader.onload = (f) => {
+                const dataUrl = f.target.result;
+                allUploadedFiles.push(dataUrl);
 
-const shapeConstraints = {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'thumb-wrapper';
+                wrapper.innerHTML = `
+                    <img src="${dataUrl}">
+                    <div class="remove-btn">×</div>
+                `;
+                wrapper.querySelector('.remove-btn').onclick = () => {
+                    allUploadedFiles = allUploadedFiles.filter(item => item !== dataUrl);
+                    wrapper.remove();
+                };
+                container.appendChild(wrapper);
+            };
+            reader.readAsDataURL(file);
+        });
+    };
 
-    "寄棟": "屋根面を4つ（台形2、三角2）に分離。中央の大棟と4隅の隅棟を定義せよ。",
+    const shapeConstraints = {
+        "寄棟": "屋根面を4つ（台形2、三角2）に分離。大棟と4隅の隅棟を定義せよ。",
+        "切妻": "長方形2面。妻側の『けらば出』を厳密加算せよ。",
+        "片流れ": "1つの長方形。最高部(水上)と最低部(水下)を特定せよ。",
+        "方形": "4つの三角形が1点に集まる構造。隅棟4本を均等算出せよ。",
+        "陸屋根": "水平面。パラペット内寸と排水勾配を考慮せよ。",
+        "腰折": "勾配変化点の境界線座標を特定し、上下の面を定義せよ。",
+        "入母屋": "上部切妻＋下部寄棟の複合。接続部の寸法を精密に算出せよ。",
+        "半切妻": "切妻の妻側上部を斜めに切り落とした（はしょった）形状を再現せよ。",
+        "複合屋根": "L字や段違いを独立したN個の多角形として個別に定義せよ。"
+    };
 
-    "切妻": "屋根面を2つの長方形に分離。妻側の『けらば出』を厳密に加算せよ。",
+    // 描画エンジン（寸法・流れ方向オーバーレイ表示継承）
+    function renderComplexRoof(data, canvasId, isActual) {
+        const canvas = document.getElementById(canvasId);
+        const ctx = canvas.getContext('2d');
+        canvas.width = 1200;
+        canvas.height = 800;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    "片流れ": "1つの長方形。最高部(水上)と最低部(水下)を特定せよ。",
+        if (!data.planes) return;
 
-    "方形": "4つの三角形が1点に集まる。隅棟4本の長さを均等に算出せよ。",
+        let allX = [], allY = [];
+        data.planes.forEach(p => p.vertices.forEach(v => { allX.push(v.x); allY.push(v.y); }));
+        const minX = Math.min(...allX), maxX = Math.max(...allX);
+        const minY = Math.min(...allY), maxY = Math.max(...allY);
+        const scale = Math.min(1000 / (maxX - minX || 1), 600 / (maxY - minY || 1));
+        const offsetX = (canvas.width - (maxX - minX) * scale) / 2 - minX * scale;
+        const offsetY = (canvas.height - (maxY - minY) * scale) / 2 - minY * scale;
 
-    "陸屋根": "水平面。パラペット内寸と、必要であれば排水勾配を考慮せよ。",
+        data.planes.forEach(plane => {
+            const coords = plane.vertices.map(v => ({ x: v.x * scale + offsetX, y: v.y * scale + offsetY }));
 
-    "腰折": "1面の中で勾配が変化する。折れ点（境界線）の座標を特定せよ。",
+            // 1. 屋根の面を描画
+            ctx.beginPath();
+            ctx.strokeStyle = isActual ? "#d93025" : "#1a73e8";
+            ctx.lineWidth = 3;
+            ctx.fillStyle = isActual ? "rgba(217, 48, 37, 0.05)" : "rgba(26, 115, 232, 0.05)";
+            coords.forEach((c, i) => { if (i === 0) ctx.moveTo(c.x, c.y); else ctx.lineTo(c.x, c.y); });
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
 
-    "入母屋": "上部を切妻、下部を寄棟状のスカートとして複合定義せよ。",
+            // 2. 各辺の寸法（オーバーレイ）
+            ctx.font = "bold 16px Arial";
+            plane.edges.forEach(edge => {
+                const v1 = coords[edge.from], v2 = coords[edge.to];
+                if (!v1 || !v2) return;
+                const midX = (v1.x + v2.x) / 2, midY = (v1.y + v2.y) / 2;
+                const val = Math.round(isActual ? edge.len_actual : edge.len_plan);
+                
+                ctx.fillStyle = "white";
+                const tw = ctx.measureText(val).width + 6;
+                ctx.fillRect(midX - tw/2, midY - 10, tw, 20);
+                ctx.fillStyle = isActual ? "#d93025" : "#1a73e8";
+                ctx.textAlign = "center";
+                ctx.fillText(val, midX, midY + 5);
+            });
 
-    "半切妻": "切妻の妻側上部を斜めに切り落とした（はしょった）形状を再現せよ。",
-
-    "複合屋根": "段違いやL字形状を独立したN個の多角形として定義せよ。"
-
-};
-
-
-
-document.getElementById('analyzeBtn').onclick = async () => {
-
-    const selectedRoofType = document.getElementById('roofType').value;
-
-    
-
-    const finalPrompt = `
-
-# 屋根積算精密アルゴリズム v4.6 (厳格ロジック統合版)
-
-あなたは屋根積算のエキスパートとして、以下のステップを**「順守」**せよ。
-
-
-
-#### Step 0: 屋根が必要な「壁芯」の厳格特定 (最優先)
-
-- 平面図の太線付近の注記（LDK/洋室/和室/収納/サッシ/開口部等）をスキャンせよ。
-
-- **【屋内確定ルール】**：上記注記がある壁は「屋内」であり、屋根を載せるべき土台（壁芯）と見なす。
-
-- **【ベランダ除外ルール】**：「ベランダ」「バルコニー」「吹き抜け」は、必ず立面図と照合せよ。屋根が被っていない（空が見える）場合は、屋根面積に含めてはならない。
-
-
-
-#### Step 1: 寸法線の階層解析 (数値取得の厳格化)
-
-- **【一番内側の数値ルール】**：平面図の枠外にある寸法線のうち、**「最も建物に近い（一番内側の）数値」**を壁芯寸法として採用せよ。
-
-- **【合算禁止ルール】**：外側にある「合計値」や、別階（バルコニー突出部等）の数値を二重に足すミスを厳禁とする。
-
-- 例: Y軸の内側が 1800, 1800, 900 なら、その合計 4500mm のみを使え。
-
-
-
-#### Step 2: 軒の出の全周加算
-
-- 立面図から「軒の出(eaves)」を特定（例: 275mm）。
-
-- 屋根外寸 = Step1で特定した壁芯合計 + (軒の出 × 2)。
-
-
-
-#### Step 3: 形状別・幾何計算
-
-- 選択された形状: ${selectedRoofType}
-
-- ${shapeConstraints[selectedRoofType]}
-
-- 全ての辺に対し、「水平投影図(Plan)」と「勾配実寸(Actual)」を算出し、座標(vertices)を定義せよ。
-
-
-
-出力形式(JSON):
-
-{
-
-  "detected_slope": 3.5,
-
-  "planes": [
-
-    {
-
-      "name": "面名",
-
-      "vertices": [{"x": 0, "y": 0}, ...],
-
-      "edges": [{"from": 0, "to": 1, "label": "軒先", "len_plan": 5000, "len_actual": 5000}],
-
-      "center_label": "流れ実寸: ○○mm"
-
+            // 3. 垂直流れ寸法の表示
+            if (plane.center_label) {
+                const centerX = coords.reduce((a, b) => a + b.x, 0) / coords.length;
+                const centerY = coords.reduce((a, b) => a + b.y, 0) / coords.length;
+                ctx.font = "bold 18px Arial";
+                ctx.fillStyle = "#000";
+                ctx.fillText("流れ: " + plane.center_label, centerX, centerY);
+            }
+        });
     }
 
-  ],
+    document.getElementById('analyzeBtn').onclick = async () => {
+        const key = document.getElementById('apiKey').value;
+        const type = document.getElementById('roofType').value;
+        const count = document.getElementById('planeCount').value;
 
-  "step_logs": "1. 内側寸法より壁芯4500を確認。 2. 軒の出275×2を加算し外寸5050を算出..."
+        if (!key) return alert("APIキーを入力してください");
+        if (allUploadedFiles.length === 0) return alert("図面をアップロードしてください");
 
+        const prompt = `
+# 屋根積算精密アルゴリズム v4.6 (厳格精密モード)
+#### Step 0: 屋根が必要な「壁芯」の厳格特定 (最優先)
+- 平面図の注記（LDK/洋室/和室/収納/サッシ/開口部等）をスキャン。
+- 【屋内確定ルール】：上記注記がある壁は「屋内」とし、屋根の土台（壁芯）と確定せよ。
+- 【ベランダ除外ルール】：「ベランダ/バルコニー」は立面図と照合。屋根が被っていない場合は除外せよ。
+
+#### Step 1: 寸法線の階層解析と数値取得
+- 平面図枠外の寸法線のうち、「最も建物に近い（一番内側の）数値」を壁芯寸法として採用。
+- 外側の「合計値」や別階の数値を合算するミスを厳禁とする。
+
+#### Step 2: 形状別・幾何計算
+- 選択形状: ${type} / 面数: ${count}
+- ${shapeConstraints[type]}
+- 全ての辺に「水平投影(len_plan)」と「勾配実寸(len_actual)」を算出。
+
+出力形式(JSONのみ):
+{
+  "planes": [{
+    "name": "面名",
+    "vertices": [{"x": 0, "y": 0}, ...],
+    "edges": [{"from": 0, "to": 1, "len_plan": 3640, "len_actual": 3845}],
+    "center_label": "3845"
+  }],
+  "step_logs": "解析プロセスを記述"
 }`;
 
-
-
-    // --- 以下、座標描画エンジン(renderComplexRoof)へ続く ---
-
-    // (描画ロジックは前回の座標ベースのものをそのまま使用)
-
-};
-
+        document.getElementById('analyzeBtn').innerText = "解析中...";
+        // ここにGemini APIへのリクエストを実装。
+        // 結果取得後、document.getElementById('resultArea').style.display = 'block';
+        // renderComplexRoof(result, 'planCanvas', false); 等を実行。
+    };
 </script>
+</body>
+</html>
