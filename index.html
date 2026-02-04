@@ -2,322 +2,265 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Roof Scan Pro v5.1 - Gemini 3 Fixed</title>
+    <title>Roof Scan Pro v4.6 - Full Integration</title>
     <style>
-        :root { --primary: #1a73e8; --error: #d93025; --success: #188038; --bg: #f8f9fa; }
-        body { font-family: -apple-system, "Segoe UI", sans-serif; background: var(--bg); margin: 0; padding: 15px; color: #3c4043; }
-        .card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); margin-bottom: 15px; }
-        h1 { font-size: 1.1rem; margin: 0 0 15px 0; color: var(--primary); display: flex; align-items: center; gap: 8px; }
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        input, select { width: 100%; padding: 12px; border: 1px solid #dadce0; border-radius: 8px; box-sizing: border-box; font-size: 0.9rem; }
-        #previewContainer { display: flex; gap: 10px; overflow-x: auto; padding: 10px 0; min-height: 90px; }
-        .thumb-wrapper { position: relative; min-width: 80px; height: 80px; background: #eee; border-radius: 8px; border: 1px solid #dadce0; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-        .thumb-wrapper img { width: 100%; height: 100%; object-fit: cover; }
-        .analyze-btn { width: 100%; background: var(--primary); color: white; padding: 18px; border: none; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; transition: opacity 0.2s; }
-        .analyze-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-        canvas { width: 100%; height: auto; background: #fff; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 15px; }
-        .res-label { display: inline-block; padding: 4px 10px; border-radius: 4px; font-size: 0.8rem; margin-bottom: 5px; color: white; font-weight: bold; }
-        .bg-blue { background: var(--primary); }
-        .bg-red { background: var(--error); }
-        #logArea { font-size: 0.8rem; background: #333; color: #fff; padding: 10px; border-radius: 8px; max-height: 200px; overflow-y: auto; white-space: pre-wrap; margin-top: 10px; display: none; }
-        .error-msg { color: var(--error); font-weight: bold; padding: 10px; border: 1px solid var(--error); border-radius: 8px; background: #ffebeb; display: none; margin-bottom: 10px; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f4f8; margin: 0; padding: 20px; color: #333; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); margin-bottom: 20px; }
+        h2, h3 { margin-top: 0; color: #1a73e8; border-left: 5px solid #1a73e8; padding-left: 15px; }
+        .input-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 14px; }
+        .input-style { width: 100%; padding: 12px; border: 1px solid #ced4da; border-radius: 6px; box-sizing: border-box; }
+        .flex-row { display: flex; gap: 15px; }
+        .btn-primary { background: #1a73e8; color: white; border: none; padding: 15px 30px; border-radius: 8px; cursor: pointer; width: 100%; font-size: 18px; font-weight: bold; transition: 0.3s; }
+        .btn-primary:hover { background: #1557b0; }
+        .btn-primary:disabled { background: #ccc; cursor: not-allowed; }
+        #previewContainer { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 15px; padding: 15px; border: 2px dashed #1a73e8; border-radius: 8px; background: #f8fbff; min-height: 100px; }
+        .thumb-wrapper { position: relative; width: 120px; height: 120px; }
+        .thumb-wrapper img { width: 100%; height: 100%; object-fit: cover; border-radius: 6px; border: 1px solid #ddd; }
+        .remove-btn { position: absolute; top: -8px; right: -8px; background: #d93025; color: white; border-radius: 50%; width: 24px; height: 24px; text-align: center; line-height: 22px; cursor: pointer; font-weight: bold; }
+        canvas { width: 100%; height: auto; background: #fff; border: 1px solid #ddd; border-radius: 8px; margin-top: 10px; }
+        .log-box { background: #202124; color: #f1f3f4; padding: 15px; border-radius: 8px; font-family: 'Courier New', Courier, monospace; font-size: 13px; white-space: pre-wrap; margin-top: 10px; overflow-x: auto; }
+        .dimension-label { font-size: 12px; font-weight: bold; }
     </style>
 </head>
 <body>
 
-<div class="card">
-    <h1>🔑 システム設定</h1>
-    <input type="password" id="apiKey" placeholder="Gemini API Key を入力" style="margin-bottom:10px;">
-    <div class="grid">
-        <div>
-            <label style="font-size:0.8rem; color:#666;">屋根型式</label>
-            <select id="roofType">
-                <option value="寄棟">寄棟 (Hip)</option>
-                <option value="切妻">切妻 (Gable)</option>
-                <option value="複合屋根">複合屋根 (Complex)</option>
-                <option value="片流れ">片流れ (Shed)</option>
-            </select>
+<div class="container">
+    <div class="card">
+        <h2>🏠 Roof Scan Pro v4.6</h2>
+        <div class="input-group">
+            <label>🔑 Gemini API Key:</label>
+            <input type="password" id="apiKey" placeholder="AIキーを入力" class="input-style">
         </div>
-        <div>
-            <label style="font-size:0.8rem; color:#666;">屋根面数</label>
-            <input type="number" id="planeCount" value="4" min="1">
+        <div class="flex-row">
+            <div style="flex: 2;">
+                <label>屋根形状の基本方針:</label>
+                <select id="roofType" class="input-style">
+                    <option value="複合屋根">複合屋根 (複雑な形状)</option>
+                    <option value="寄棟">寄棟 (Hip)</option>
+                    <option value="切妻">切妻 (Gable)</option>
+                    <option value="片流れ">片流れ (Shed)</option>
+                    <option value="方形">方形 (Pyramid)</option>
+                </select>
+            </div>
+            <div style="flex: 1;">
+                <label>想定面数:</label>
+                <input type="number" id="planeCount" value="4" class="input-style">
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>📁 図面アップロード（複数保持）</h3>
+        <p style="font-size: 12px; color: #666;">平面図、立面図、矩計図などを追加してください。画像は上書きされません。</p>
+        <input type="file" id="fileInput" accept="image/*" multiple class="input-style">
+        <div id="previewContainer"></div>
+    </div>
+
+    <button id="analyzeBtn" class="btn-primary">精密解析を実行</button>
+
+    <div id="resultArea" style="display:none; margin-top: 20px;">
+        <div class="card">
+            <h3 style="border-color: #1a73e8;">🔵 水平投影図 (Plan View) - 青数値</h3>
+            <canvas id="planCanvas"></canvas>
+        </div>
+        <div class="card">
+            <h3 style="border-color: #d93025;">🔴 勾配実寸図 (Actual View) - 赤数値</h3>
+            <canvas id="slopeCanvas"></canvas>
+        </div>
+        <div class="card">
+            <h3>📝 解析プロセス・ログ</h3>
+            <div id="logArea" class="log-box"></div>
         </div>
     </div>
 </div>
 
-<div class="card">
-    <h1>📸 図面アップロード (v5.1 Gemini-3 Fixed)</h1>
-    <div class="error-msg" id="errorMsg"></div>
-    <div id="previewContainer"></div>
-    <label style="display:block; text-align:center; padding:20px; border:2px dashed #ccc; border-radius:10px; cursor:pointer; color:#666; margin-bottom:10px;">
-        ＋ ここをタップして画像・PDFを追加
-        <input type="file" id="fileInput" accept="image/*,application/pdf" multiple style="display:none">
-    </label>
-    <button id="analyzeBtn" class="analyze-btn">精密解析・実行</button>
-</div>
+<script>
+let imageList = []; // 画像データを蓄積する配列
 
-<div class="card" id="resultCard" style="display:none;">
-    <h1>📊 解析結果オーバーレイ</h1>
-    <div>
-        <span class="res-label bg-blue">【平面図】水平寸法 ＋ 流れ(平面)</span>
-        <canvas id="planCanvas"></canvas>
-    </div>
-    <div>
-        <span class="res-label bg-red">【実寸図】勾配実寸 ＋ 流れ(実寸)</span>
-        <canvas id="slopeCanvas"></canvas>
-    </div>
-    <div id="logArea"></div>
-</div>
+// 画像の読み込みとプレビュー生成（上書き防止）
+document.getElementById('fileInput').onchange = (e) => {
+    const files = Array.from(e.target.files);
+    const container = document.getElementById('previewContainer');
 
-<script type="module">
-    import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
+    files.forEach(file => {
+        const reader = new FileReader();
+        reader.onload = (f) => {
+            const dataUrl = f.target.result;
+            imageList.push(dataUrl);
 
-    let selectedFiles = [];
-    const fileInput = document.getElementById('fileInput');
-
-    fileInput.onchange = (e) => {
-        const files = Array.from(e.target.files);
-        files.forEach(file => {
-            const reader = new FileReader();
-            reader.onload = (ev) => {
-                selectedFiles.push({ file, data: ev.target.result });
-                renderPreviews();
+            const wrapper = document.createElement('div');
+            wrapper.className = 'thumb-wrapper';
+            wrapper.innerHTML = `
+                <img src="${dataUrl}">
+                <div class="remove-btn">×</div>
+            `;
+            wrapper.querySelector('.remove-btn').onclick = () => {
+                imageList = imageList.filter(img => img !== dataUrl);
+                wrapper.remove();
             };
-            reader.readAsDataURL(file);
-        });
-        fileInput.value = "";
-    };
+            container.appendChild(wrapper);
+        };
+        reader.readAsDataURL(file);
+    });
+};
 
-    function renderPreviews() {
-        const container = document.getElementById('previewContainer');
-        container.innerHTML = "";
-        selectedFiles.forEach(f => {
-            const div = document.createElement('div');
-            div.className = 'thumb-wrapper';
-            div.innerHTML = f.file.type.includes('image') ? `<img src="${f.data}">` : `📄 PDF`;
-            container.appendChild(div);
+// 描画エンジン（全辺の寸法 ＋ 中央の流れ寸法をオーバーレイ）
+function drawRoof(data, canvasId, isActual) {
+    const canvas = document.getElementById(canvasId);
+    const ctx = canvas.getContext('2d');
+    canvas.width = 1200;
+    canvas.height = 800;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    if (!data.planes || data.planes.length === 0) return;
+
+    // オートスケーリング計算
+    let allX = [], allY = [];
+    data.planes.forEach(p => p.vertices.forEach(v => { allX.push(v.x); allY.push(v.y); }));
+    const minX = Math.min(...allX), maxX = Math.max(...allX);
+    const minY = Math.min(...allY), maxY = Math.max(...allY);
+    
+    const margin = 100;
+    const scale = Math.min((canvas.width - margin*2) / (maxX - minX || 1), (canvas.height - margin*2) / (maxY - minY || 1));
+    const offX = (canvas.width - (maxX - minX) * scale) / 2 - minX * scale;
+    const offY = (canvas.height - (maxY - minY) * scale) / 2 - minY * scale;
+
+    data.planes.forEach(plane => {
+        const pts = plane.vertices.map(v => ({ x: v.x * scale + offX, y: v.y * scale + offY }));
+
+        // 1. 外形描画
+        ctx.beginPath();
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = isActual ? "#d93025" : "#1a73e8";
+        ctx.fillStyle = isActual ? "rgba(217,48,37,0.05)" : "rgba(26,115,232,0.05)";
+        pts.forEach((p, i) => i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y));
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // 2. 各辺の寸法表示 (Edges)
+        ctx.font = "bold 16px Arial";
+        plane.edges.forEach(edge => {
+            const p1 = pts[edge.from], p2 = pts[edge.to];
+            if(!p1 || !p2) return;
+            const mx = (p1.x + p2.x) / 2;
+            const my = (p1.y + p2.y) / 2;
+            const val = Math.round(isActual ? edge.len_actual : edge.len_plan);
+
+            // 背景ボックス
+            const txt = val.toString();
+            const tw = ctx.measureText(txt).width + 8;
+            ctx.fillStyle = "white";
+            ctx.fillRect(mx - tw/2, my - 12, tw, 22);
+            // 数値描画
+            ctx.fillStyle = isActual ? "#d93025" : "#1a73e8";
+            ctx.textAlign = "center";
+            ctx.fillText(txt, mx, my + 5);
         });
+
+        // 3. 垂直流れ寸法の表示 (NAGARE)
+        if (plane.center_label) {
+            const cx = pts.reduce((sum, p) => sum + p.x, 0) / pts.length;
+            const cy = pts.reduce((sum, p) => sum + p.y, 0) / pts.length;
+            ctx.font = "bold 20px Arial";
+            ctx.fillStyle = "#000";
+            const labelTxt = `流れ: ${plane.center_label}`;
+            // ラベル用背景
+            const lw = ctx.measureText(labelTxt).width + 10;
+            ctx.fillStyle = "rgba(255,255,255,0.8)";
+            ctx.fillRect(cx - lw/2, cy - 15, lw, 30);
+            ctx.fillStyle = "#333";
+            ctx.fillText(labelTxt, cx, cy + 8);
+        }
+    });
+}
+
+document.getElementById('analyzeBtn').onclick = async () => {
+    const key = document.getElementById('apiKey').value;
+    const type = document.getElementById('roofType').value;
+    const count = document.getElementById('planeCount').value;
+
+    if (!key || imageList.length === 0) {
+        alert("APIキーと図面画像が必要です。");
+        return;
     }
 
-    document.getElementById('analyzeBtn').onclick = async () => {
-        const apiKey = document.getElementById('apiKey').value;
-        const roofType = document.getElementById('roofType').value;
-        const planeCount = document.getElementById('planeCount').value;
-        const errorMsg = document.getElementById('errorMsg');
-        const logArea = document.getElementById('logArea');
-        
-        errorMsg.style.display = 'none';
-        logArea.style.display = 'none';
+    const btn = document.getElementById('analyzeBtn');
+    btn.disabled = true;
+    btn.innerText = "精密解析中... (数十秒かかる場合があります)";
 
-        if (!apiKey || selectedFiles.length === 0) return alert("APIキーと図面をセットしてください");
-        
-        const btn = document.getElementById('analyzeBtn');
-        btn.disabled = true;
-        btn.innerText = "解析中... (Gemini-3 Preview)";
+    const prompt = `
+# 屋根積算精密解析指令 v4.6
+屋根伏図および立面図を解析し、以下の手順に従って幾何学的座標を出力せよ。
 
-        try {
-            const genAI = new GoogleGenerativeAI(apiKey);
-            
-            // ▼▼▼ ここを gemini-3-flash-preview に固定 ▼▼▼
-            const model = genAI.getGenerativeModel({ 
-                model: "gemini-3-flash-preview", 
-                generationConfig: { responseMimeType: "application/json" }
-            });
+## Step 0: 壁芯と屋根範囲の特定
+- 図面内の注記（LDK、洋室、和室、収納等）を確認し、そこを「屋内」と判定せよ。
+- 判定された「屋内」を囲む一番内側の寸法線を「壁芯」として採用せよ。
+- サッシや開口部の位置から、ベランダ等に屋根がかかっていない場合はそこを除外せよ。
 
-            // ---------------------------------------------------------
-            // 1. 分岐ロジック: 型式に応じた指示の生成
-            // ---------------------------------------------------------
-            let specificConstraint = "";
-            if (roofType === "複合屋根") {
-                specificConstraint = `
-- **モード: 複合屋根・段違い解析**
-- 立面図(Elevation)を正とし、段差がある場合は別々の面として座標を定義せよ。
-- 平面図のグリッド線(910, 455等)は無視し、実在する「屋根の外形線」のみを拾え。
-- 付帯部（ポーチ、バルコニー）を除外した、メインの${planeCount}面のみを出力せよ。`;
-            } else if (roofType === "寄棟") {
-                specificConstraint = `
-- **モード: 寄棟解析**
-- 屋根面を4つ（南北の台形、東西の三角形）に分離し、それぞれの実寸「流れ」と「隅棟」を算出せよ。`;
-            } else {
-                specificConstraint = `
-- **モード: ${roofType}解析**
-- 屋根面を${planeCount}面として定義し、妻側のけらば出を正確に加算せよ。`;
-            }
+## Step 1: 幾何計算
+- 屋根形状: ${type}、指定面数: ${count}
+- 各面ごとに、頂点の相対座標(x, y)を算出せよ。
+- 各辺について、水平投影長さ(len_plan)と勾配実寸長さ(len_actual)をmm単位で算出せよ。
+- 面の垂直流れ方向（軒から棟への最短距離の実寸）を算出せよ。
 
-            // ---------------------------------------------------------
-            // 2. プロンプト構築（Step0-3完全維持 + 分岐注入）
-            // ---------------------------------------------------------
-            const prompt = `
-あなたは屋根積算のエキスパートです。以下のステップを実行せよ。
-
-#### Step 0: 屋根が必要な壁の特定 (最重要)
-1. 平面図の太線ライン付近に「LDK/洋室/和室/クローゼット/サッシ/開口部」等の注記があるか確認せよ。これがある壁は「屋内（屋根の土台）」と確定せよ。
-2. 「ベランダ」「バルコニー」等は、必ず立面図（東・西・南・北）と照合し、主屋根が被っているか判定せよ。空が見える場合は除外せよ。
-
-#### Step 1: 勾配の自動検出
-- 図面から「○寸」「○/10」「○.00」という勾配表記を探せ。
-
-#### Step 2: 複合構造の統合と数値死守
-- 建物全体の左上を原点(0,0)とし、各パーツ（主屋根、ポーチ、下屋）を配置せよ。
-- 【絶対ルール】ピクセル比率での推定を禁止する。図面上のY軸寸法テキストを最優先で読み取れ。
-- 立面図から「軒の出(eaves)」の数値を探し、東西(X)・南北(Y)それぞれに(軒の出×2)を加算せよ。
-  - 計算例: 外寸 = 壁芯合計 + (軒の出 × 2)
-
-#### Step 3: 屋根面ごとの計算 (${roofType} 指定)
-${specificConstraint}
-- 全ての辺に対し、「水平投影図(Plan)」と「勾配実寸(Actual)」の両方を算出し、座標データと共に返せ。
-- 各面の中央付近を通る「流れ寸法(flow)」の始点・終点・距離を算出せよ。
-
-出力形式(JSON):
+## 出力形式 (JSONのみ)
 {
-  "slope": 6.0,
-  "step_logs": "解析思考プロセス",
   "planes": [
     {
-      "id": 1, 
-      "vertices": [{"x":0,"y":0}, ...],
-      "edges": [{"from":0,"to":1,"type":"eave","len_plan":1000,"len_actual":1000}],
-      "flow": {"start":{"x":10,"y":10},"end":{"x":10,"y":50},"len_plan":4000,"len_actual":4500}
+      "name": "面A",
+      "vertices": [{"x": 0, "y": 0}, {"x": 3640, "y": 0}, ...],
+      "edges": [{"from": 0, "to": 1, "len_plan": 3640, "len_actual": 3845}, ...],
+      "center_label": "3845"
     }
-  ]
+  ],
+  "logs": "解析の詳細ステップ（サッシ判定結果、採用した寸法、勾配計算式など）"
 }`;
 
-            const parts = selectedFiles.map(f => ({
-                inlineData: { data: f.data.split(',')[1], mimeType: f.file.type }
-            }));
-
-            // APIリクエスト
-            const result = await model.generateContent([prompt, ...parts]);
-            const responseText = result.response.text();
-
-            // ---------------------------------------------------------
-            // 3. フリーズ防止: JSONパースの安全性向上
-            // ---------------------------------------------------------
-            let data;
-            try {
-                // マークダウン記号 ```json ... ``` がある場合に除去
-                const cleanJson = responseText.replace(/```json|```/g, '').trim();
-                data = JSON.parse(cleanJson);
-            } catch (jsonErr) {
-                console.error("JSON Parse Error:", responseText);
-                throw new Error("AIの返答が正しいJSON形式ではありませんでした。再試行してください。");
-            }
-
-            document.getElementById('resultCard').style.display = 'block';
-            logArea.style.display = 'block';
-            logArea.innerText = `【解析ログ】\n${data.step_logs}\n\n(勾配: ${data.slope}寸)`;
-
-            // 描画処理 (エラーがあってもここで止まらないようにtry-catchで囲む)
-            try {
-                drawPolygon(data, 'planCanvas', false);
-                drawPolygon(data, 'slopeCanvas', true);
-            } catch (drawErr) {
-                console.error("Drawing Error:", drawErr);
-                alert("描画中にエラーが発生しましたが、解析データはログに表示されています。");
-            }
-
-        } catch (e) {
-            errorMsg.innerText = "エラーが発生しました: " + e.message;
-            errorMsg.style.display = 'block';
-            console.error(e);
-        } finally {
-            btn.disabled = false;
-            btn.innerText = "精密解析・実行";
-        }
-    };
-
-    function drawPolygon(data, canvasId, isActual) {
-        const canvas = document.getElementById(canvasId);
-        if (!data.planes || data.planes.length === 0) return; // データなしなら終了
-
-        const ctx = canvas.getContext('2d');
-        canvas.width = 1200; canvas.height = 900;
-        ctx.clearRect(0,0,1200,900);
-
-        // スケーリング計算
-        let allX = [], allY = [];
-        data.planes.forEach(p => {
-            if(p.vertices) p.vertices.forEach(v => { allX.push(v.x); allY.push(v.y); });
+    try {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contents: [{
+                    parts: [
+                        { text: prompt },
+                        ...imageList.map(img => ({
+                            inline_data: { mime_type: "image/jpeg", data: img.split(',')[1] }
+                        }))
+                    ]
+                }]
+            })
         });
+
+        const resJson = await response.json();
+        const responseText = resJson.candidates[0].content.parts[0].text;
         
-        // 頂点データがない場合の安全策
-        if (allX.length === 0) {
-            ctx.fillText("座標データが取得できませんでした", 50, 50);
-            return;
+        // JSONの抽出
+        const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+            const result = JSON.parse(jsonMatch[0]);
+            document.getElementById('resultArea').style.display = 'block';
+            document.getElementById('logArea').innerText = result.logs || "解析完了";
+            
+            // 描画実行
+            drawRoof(result, 'planCanvas', false);
+            drawRoof(result, 'slopeCanvas', true);
+        } else {
+            throw new Error("AIから有効なデータが返されませんでした。ログ: " + responseText);
         }
 
-        const minX = Math.min(...allX), maxX = Math.max(...allX);
-        const minY = Math.min(...allY), maxY = Math.max(...allY);
-        const roofW = maxX - minX, roofH = maxY - minY;
-        const scale = Math.min(1000/roofW, 700/roofH);
-        const offsetX = (1200 - roofW * scale) / 2 - minX * scale;
-        const offsetY = (900 - roofH * scale) / 2 - minY * scale;
-
-        const color = isActual ? "#d93025" : "#1a73e8";
-
-        data.planes.forEach(plane => {
-            if (!plane.vertices) return;
-
-            // 1. ポリゴン描画
-            ctx.beginPath();
-            ctx.strokeStyle = color;
-            ctx.lineWidth = 3;
-            plane.vertices.forEach((v, i) => {
-                const px = v.x * scale + offsetX;
-                const py = v.y * scale + offsetY;
-                if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
-            });
-            ctx.closePath();
-            ctx.stroke();
-
-            // 2. 辺ラベル
-            if (plane.edges) {
-                ctx.font = "bold 13px sans-serif";
-                plane.edges.forEach(edge => {
-                    const v1 = plane.vertices[edge.from];
-                    const v2 = plane.vertices[edge.to] || plane.vertices[0];
-                    if (!v1 || !v2) return; // 頂点インデックスエラー回避
-
-                    const mx = ((v1.x + v2.x) / 2) * scale + offsetX;
-                    const my = ((v1.y + v2.y) / 2) * scale + offsetY;
-                    const val = isActual ? edge.len_actual : edge.len_plan;
-                    const label = `${edge.type ? edge.type.toUpperCase() : ''}: ${val}`;
-                    
-                    drawTextLabel(ctx, label, mx, my, color);
-                });
-            }
-
-            // 3. 流れ寸法 (存在する場合のみ)
-            if (plane.flow && plane.flow.start && plane.flow.end) {
-                const fs = plane.flow.start, fe = plane.flow.end;
-                const sx = fs.x * scale + offsetX, sy = fs.y * scale + offsetY;
-                const ex = fe.x * scale + offsetX, ey = fe.y * scale + offsetY;
-
-                ctx.save();
-                ctx.setLineDash([5, 5]);
-                ctx.beginPath();
-                ctx.moveTo(sx, sy);
-                ctx.lineTo(ex, ey);
-                ctx.strokeStyle = color;
-                ctx.stroke();
-                ctx.restore();
-
-                const flowVal = isActual ? plane.flow.len_actual : plane.flow.len_plan;
-                drawTextLabel(ctx, `流れ: ${flowVal}`, (sx+ex)/2, (sy+ey)/2, color, true);
-            }
-        });
+    } catch (e) {
+        console.error(e);
+        alert("エラーが発生しました: " + e.message);
+    } finally {
+        btn.disabled = false;
+        btn.innerText = "精密解析を実行";
     }
-
-    function drawTextLabel(ctx, text, x, y, color, isHighlight = false) {
-        ctx.font = isHighlight ? "bold 15px sans-serif" : "12px sans-serif";
-        const tw = ctx.measureText(text).width;
-        ctx.fillStyle = "rgba(255,255,255,0.85)";
-        ctx.fillRect(x - tw/2 - 4, y - 10, tw + 8, 20);
-        ctx.fillStyle = color;
-        ctx.textAlign = "center";
-        ctx.fillText(text, x, y + 5);
-    }
+};
 </script>
+
 </body>
 </html>
