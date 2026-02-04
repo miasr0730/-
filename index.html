@@ -3,210 +3,321 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Roof Scan Pro v4.6 (Strict Precision Mode)</title>
+    <title>Roof Scan Pro v5.1 - Gemini 3 Fixed</title>
     <style>
-        body { font-family: sans-serif; background: #f0f2f5; padding: 20px; color: #333; }
-        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; }
-        .input-style { width: 100%; padding: 10px; margin: 8px 0; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
-        .select-style { width: 100%; padding: 10px; border-radius: 4px; border: 1px solid #ccc; }
-        .btn-primary { background: #1a73e8; color: white; border: none; padding: 15px; border-radius: 4px; cursor: pointer; width: 100%; font-size: 16px; font-weight: bold; }
-        .btn-primary:hover { background: #1557b0; }
-        #previewContainer { display: flex; gap: 10px; flex-wrap: wrap; min-height: 50px; border: 2px dashed #ddd; padding: 15px; border-radius: 8px; background: #fafafa; }
-        .thumb-wrapper { position: relative; width: 100px; height: 100px; }
-        .thumb-wrapper img { width: 100%; height: 100%; object-fit: cover; border-radius: 4px; border: 1px solid #ddd; }
-        .remove-btn { position: absolute; top: -5px; right: -5px; background: #d93025; color: white; border-radius: 50%; width: 20px; height: 20px; text-align: center; line-height: 18px; cursor: pointer; font-size: 12px; }
-        canvas { width: 100%; height: auto; border: 1px solid #333; background: #fff; margin-top: 10px; }
-        h3 { margin-top: 0; border-left: 4px solid #1a73e8; padding-left: 10px; }
+        :root { --primary: #1a73e8; --error: #d93025; --success: #188038; --bg: #f8f9fa; }
+        body { font-family: -apple-system, "Segoe UI", sans-serif; background: var(--bg); margin: 0; padding: 15px; color: #3c4043; }
+        .card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); margin-bottom: 15px; }
+        h1 { font-size: 1.1rem; margin: 0 0 15px 0; color: var(--primary); display: flex; align-items: center; gap: 8px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        input, select { width: 100%; padding: 12px; border: 1px solid #dadce0; border-radius: 8px; box-sizing: border-box; font-size: 0.9rem; }
+        #previewContainer { display: flex; gap: 10px; overflow-x: auto; padding: 10px 0; min-height: 90px; }
+        .thumb-wrapper { position: relative; min-width: 80px; height: 80px; background: #eee; border-radius: 8px; border: 1px solid #dadce0; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+        .thumb-wrapper img { width: 100%; height: 100%; object-fit: cover; }
+        .analyze-btn { width: 100%; background: var(--primary); color: white; padding: 18px; border: none; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer; transition: opacity 0.2s; }
+        .analyze-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        canvas { width: 100%; height: auto; background: #fff; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 15px; }
+        .res-label { display: inline-block; padding: 4px 10px; border-radius: 4px; font-size: 0.8rem; margin-bottom: 5px; color: white; font-weight: bold; }
+        .bg-blue { background: var(--primary); }
+        .bg-red { background: var(--error); }
+        #logArea { font-size: 0.8rem; background: #333; color: #fff; padding: 10px; border-radius: 8px; max-height: 200px; overflow-y: auto; white-space: pre-wrap; margin-top: 10px; display: none; }
+        .error-msg { color: var(--error); font-weight: bold; padding: 10px; border: 1px solid var(--error); border-radius: 8px; background: #ffebeb; display: none; margin-bottom: 10px; }
     </style>
 </head>
 <body>
 
-    <div class="card">
-        <h3>🔑 システム設定</h3>
-        <label>Gemini API Key:</label>
-        <input type="password" id="apiKey" placeholder="AI解析用のAPIキーを入力" class="input-style">
-        
-        <div style="display: flex; gap: 15px; margin-top: 10px;">
-            <div style="flex: 2;">
-                <label>🏠 屋根形状:</label>
-                <select id="roofType" class="select-style">
-                    <option value="寄棟">寄棟 (Hip)</option>
-                    <option value="切妻">切妻 (Gable)</option>
-                    <option value="片流れ">片流れ (Shed)</option>
-                    <option value="方形">方形 (Pyramid)</option>
-                    <option value="陸屋根">陸屋根 (Flat)</option>
-                    <option value="腰折">腰折 (Gambrel)</option>
-                    <option value="入母屋">入母屋 (Irimoya)</option>
-                    <option value="半切妻">半切妻 (Jerkinhead)</option>
-                    <option value="複合屋根" selected>複合屋根 (Complex)</option>
-                </select>
-            </div>
-            <div style="flex: 1;">
-                <label>🔢 指定面数:</label>
-                <input type="number" id="planeCount" value="4" class="input-style" min="1">
-            </div>
+<div class="card">
+    <h1>🔑 システム設定</h1>
+    <input type="password" id="apiKey" placeholder="Gemini API Key を入力" style="margin-bottom:10px;">
+    <div class="grid">
+        <div>
+            <label style="font-size:0.8rem; color:#666;">屋根型式</label>
+            <select id="roofType">
+                <option value="寄棟">寄棟 (Hip)</option>
+                <option value="切妻">切妻 (Gable)</option>
+                <option value="複合屋根">複合屋根 (Complex)</option>
+                <option value="片流れ">片流れ (Shed)</option>
+            </select>
+        </div>
+        <div>
+            <label style="font-size:0.8rem; color:#666;">屋根面数</label>
+            <input type="number" id="planeCount" value="4" min="1">
         </div>
     </div>
+</div>
 
-    <div class="card">
-        <h3>📁 図面アップロード（複数可）</h3>
-        <p style="font-size: 12px; color: #666;">※平面図と立面図をセットでアップすると精度が向上します。</p>
-        <input type="file" id="fileInput" accept="image/*" multiple class="input-style">
-        <div id="previewContainer"></div>
-    </div>
+<div class="card">
+    <h1>📸 図面アップロード (v5.1 Gemini-3 Fixed)</h1>
+    <div class="error-msg" id="errorMsg"></div>
+    <div id="previewContainer"></div>
+    <label style="display:block; text-align:center; padding:20px; border:2px dashed #ccc; border-radius:10px; cursor:pointer; color:#666; margin-bottom:10px;">
+        ＋ ここをタップして画像・PDFを追加
+        <input type="file" id="fileInput" accept="image/*,application/pdf" multiple style="display:none">
+    </label>
+    <button id="analyzeBtn" class="analyze-btn">精密解析・実行</button>
+</div>
 
-    <button id="analyzeBtn" class="btn-primary">精密解析を実行</button>
-
-    <div class="card" id="resultArea" style="display:none;">
-        <h3>📊 解析結果：水平投影図 (Plan)</h3>
+<div class="card" id="resultCard" style="display:none;">
+    <h1>📊 解析結果オーバーレイ</h1>
+    <div>
+        <span class="res-label bg-blue">【平面図】水平寸法 ＋ 流れ(平面)</span>
         <canvas id="planCanvas"></canvas>
-        
-        <h3>📐 解析結果：勾配実寸図 (Actual)</h3>
-        <canvas id="slopeCanvas"></canvas>
-
-        <div id="logArea" style="margin-top:20px; font-size: 14px; background: #f8f9fa; padding: 10px; border-radius: 4px; white-space: pre-wrap;"></div>
     </div>
+    <div>
+        <span class="res-label bg-red">【実寸図】勾配実寸 ＋ 流れ(実寸)</span>
+        <canvas id="slopeCanvas"></canvas>
+    </div>
+    <div id="logArea"></div>
+</div>
 
-<script>
-    let allUploadedFiles = []; // 蓄積用配列
+<script type="module">
+    import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
 
-    // 画像アップロード・プレビュー（上書きせず追加）
-    document.getElementById('fileInput').onchange = (e) => {
+    let selectedFiles = [];
+    const fileInput = document.getElementById('fileInput');
+
+    fileInput.onchange = (e) => {
         const files = Array.from(e.target.files);
-        const container = document.getElementById('previewContainer');
-        
         files.forEach(file => {
             const reader = new FileReader();
-            reader.onload = (f) => {
-                const dataUrl = f.target.result;
-                allUploadedFiles.push(dataUrl);
-
-                const wrapper = document.createElement('div');
-                wrapper.className = 'thumb-wrapper';
-                wrapper.innerHTML = `
-                    <img src="${dataUrl}">
-                    <div class="remove-btn">×</div>
-                `;
-                wrapper.querySelector('.remove-btn').onclick = () => {
-                    allUploadedFiles = allUploadedFiles.filter(item => item !== dataUrl);
-                    wrapper.remove();
-                };
-                container.appendChild(wrapper);
+            reader.onload = (ev) => {
+                selectedFiles.push({ file, data: ev.target.result });
+                renderPreviews();
             };
             reader.readAsDataURL(file);
         });
+        fileInput.value = "";
     };
 
-    const shapeConstraints = {
-        "寄棟": "屋根面を4つ（台形2、三角2）に分離。大棟と4隅の隅棟を定義せよ。",
-        "切妻": "長方形2面。妻側の『けらば出』を厳密加算せよ。",
-        "片流れ": "1つの長方形。最高部(水上)と最低部(水下)を特定せよ。",
-        "方形": "4つの三角形が1点に集まる構造。隅棟4本を均等算出せよ。",
-        "陸屋根": "水平面。パラペット内寸と排水勾配を考慮せよ。",
-        "腰折": "勾配変化点の境界線座標を特定し、上下の面を定義せよ。",
-        "入母屋": "上部切妻＋下部寄棟の複合。接続部の寸法を精密に算出せよ。",
-        "半切妻": "切妻の妻側上部を斜めに切り落とした（はしょった）形状を再現せよ。",
-        "複合屋根": "L字や段違いを独立したN個の多角形として個別に定義せよ。"
-    };
-
-    // 描画エンジン（寸法・流れ方向オーバーレイ表示継承）
-    function renderComplexRoof(data, canvasId, isActual) {
-        const canvas = document.getElementById(canvasId);
-        const ctx = canvas.getContext('2d');
-        canvas.width = 1200;
-        canvas.height = 800;
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        if (!data.planes) return;
-
-        let allX = [], allY = [];
-        data.planes.forEach(p => p.vertices.forEach(v => { allX.push(v.x); allY.push(v.y); }));
-        const minX = Math.min(...allX), maxX = Math.max(...allX);
-        const minY = Math.min(...allY), maxY = Math.max(...allY);
-        const scale = Math.min(1000 / (maxX - minX || 1), 600 / (maxY - minY || 1));
-        const offsetX = (canvas.width - (maxX - minX) * scale) / 2 - minX * scale;
-        const offsetY = (canvas.height - (maxY - minY) * scale) / 2 - minY * scale;
-
-        data.planes.forEach(plane => {
-            const coords = plane.vertices.map(v => ({ x: v.x * scale + offsetX, y: v.y * scale + offsetY }));
-
-            // 1. 屋根の面を描画
-            ctx.beginPath();
-            ctx.strokeStyle = isActual ? "#d93025" : "#1a73e8";
-            ctx.lineWidth = 3;
-            ctx.fillStyle = isActual ? "rgba(217, 48, 37, 0.05)" : "rgba(26, 115, 232, 0.05)";
-            coords.forEach((c, i) => { if (i === 0) ctx.moveTo(c.x, c.y); else ctx.lineTo(c.x, c.y); });
-            ctx.closePath();
-            ctx.fill();
-            ctx.stroke();
-
-            // 2. 各辺の寸法（オーバーレイ）
-            ctx.font = "bold 16px Arial";
-            plane.edges.forEach(edge => {
-                const v1 = coords[edge.from], v2 = coords[edge.to];
-                if (!v1 || !v2) return;
-                const midX = (v1.x + v2.x) / 2, midY = (v1.y + v2.y) / 2;
-                const val = Math.round(isActual ? edge.len_actual : edge.len_plan);
-                
-                ctx.fillStyle = "white";
-                const tw = ctx.measureText(val).width + 6;
-                ctx.fillRect(midX - tw/2, midY - 10, tw, 20);
-                ctx.fillStyle = isActual ? "#d93025" : "#1a73e8";
-                ctx.textAlign = "center";
-                ctx.fillText(val, midX, midY + 5);
-            });
-
-            // 3. 垂直流れ寸法の表示
-            if (plane.center_label) {
-                const centerX = coords.reduce((a, b) => a + b.x, 0) / coords.length;
-                const centerY = coords.reduce((a, b) => a + b.y, 0) / coords.length;
-                ctx.font = "bold 18px Arial";
-                ctx.fillStyle = "#000";
-                ctx.fillText("流れ: " + plane.center_label, centerX, centerY);
-            }
+    function renderPreviews() {
+        const container = document.getElementById('previewContainer');
+        container.innerHTML = "";
+        selectedFiles.forEach(f => {
+            const div = document.createElement('div');
+            div.className = 'thumb-wrapper';
+            div.innerHTML = f.file.type.includes('image') ? `<img src="${f.data}">` : `📄 PDF`;
+            container.appendChild(div);
         });
     }
 
     document.getElementById('analyzeBtn').onclick = async () => {
-        const key = document.getElementById('apiKey').value;
-        const type = document.getElementById('roofType').value;
-        const count = document.getElementById('planeCount').value;
+        const apiKey = document.getElementById('apiKey').value;
+        const roofType = document.getElementById('roofType').value;
+        const planeCount = document.getElementById('planeCount').value;
+        const errorMsg = document.getElementById('errorMsg');
+        const logArea = document.getElementById('logArea');
+        
+        errorMsg.style.display = 'none';
+        logArea.style.display = 'none';
 
-        if (!key) return alert("APIキーを入力してください");
-        if (allUploadedFiles.length === 0) return alert("図面をアップロードしてください");
+        if (!apiKey || selectedFiles.length === 0) return alert("APIキーと図面をセットしてください");
+        
+        const btn = document.getElementById('analyzeBtn');
+        btn.disabled = true;
+        btn.innerText = "解析中... (Gemini-3 Preview)";
 
-        const prompt = `
-# 屋根積算精密アルゴリズム v4.6 (厳格精密モード)
-#### Step 0: 屋根が必要な「壁芯」の厳格特定 (最優先)
-- 平面図の注記（LDK/洋室/和室/収納/サッシ/開口部等）をスキャン。
-- 【屋内確定ルール】：上記注記がある壁は「屋内」とし、屋根の土台（壁芯）と確定せよ。
-- 【ベランダ除外ルール】：「ベランダ/バルコニー」は立面図と照合。屋根が被っていない場合は除外せよ。
+        try {
+            const genAI = new GoogleGenerativeAI(apiKey);
+            
+            // ▼▼▼ ここを gemini-3-flash-preview に固定 ▼▼▼
+            const model = genAI.getGenerativeModel({ 
+                model: "gemini-3-flash-preview", 
+                generationConfig: { responseMimeType: "application/json" }
+            });
 
-#### Step 1: 寸法線の階層解析と数値取得
-- 平面図枠外の寸法線のうち、「最も建物に近い（一番内側の）数値」を壁芯寸法として採用。
-- 外側の「合計値」や別階の数値を合算するミスを厳禁とする。
+            // ---------------------------------------------------------
+            // 1. 分岐ロジック: 型式に応じた指示の生成
+            // ---------------------------------------------------------
+            let specificConstraint = "";
+            if (roofType === "複合屋根") {
+                specificConstraint = `
+- **モード: 複合屋根・段違い解析**
+- 立面図(Elevation)を正とし、段差がある場合は別々の面として座標を定義せよ。
+- 平面図のグリッド線(910, 455等)は無視し、実在する「屋根の外形線」のみを拾え。
+- 付帯部（ポーチ、バルコニー）を除外した、メインの${planeCount}面のみを出力せよ。`;
+            } else if (roofType === "寄棟") {
+                specificConstraint = `
+- **モード: 寄棟解析**
+- 屋根面を4つ（南北の台形、東西の三角形）に分離し、それぞれの実寸「流れ」と「隅棟」を算出せよ。`;
+            } else {
+                specificConstraint = `
+- **モード: ${roofType}解析**
+- 屋根面を${planeCount}面として定義し、妻側のけらば出を正確に加算せよ。`;
+            }
 
-#### Step 2: 形状別・幾何計算
-- 選択形状: ${type} / 面数: ${count}
-- ${shapeConstraints[type]}
-- 全ての辺に「水平投影(len_plan)」と「勾配実寸(len_actual)」を算出。
+            // ---------------------------------------------------------
+            // 2. プロンプト構築（Step0-3完全維持 + 分岐注入）
+            // ---------------------------------------------------------
+            const prompt = `
+あなたは屋根積算のエキスパートです。以下のステップを実行せよ。
 
-出力形式(JSONのみ):
+#### Step 0: 屋根が必要な壁の特定 (最重要)
+1. 平面図の太線ライン付近に「LDK/洋室/和室/クローゼット/サッシ/開口部」等の注記があるか確認せよ。これがある壁は「屋内（屋根の土台）」と確定せよ。
+2. 「ベランダ」「バルコニー」等は、必ず立面図（東・西・南・北）と照合し、主屋根が被っているか判定せよ。空が見える場合は除外せよ。
+
+#### Step 1: 勾配の自動検出
+- 図面から「○寸」「○/10」「○.00」という勾配表記を探せ。
+
+#### Step 2: 複合構造の統合と数値死守
+- 建物全体の左上を原点(0,0)とし、各パーツ（主屋根、ポーチ、下屋）を配置せよ。
+- 【絶対ルール】ピクセル比率での推定を禁止する。図面上のY軸寸法テキストを最優先で読み取れ。
+- 立面図から「軒の出(eaves)」の数値を探し、東西(X)・南北(Y)それぞれに(軒の出×2)を加算せよ。
+  - 計算例: 外寸 = 壁芯合計 + (軒の出 × 2)
+
+#### Step 3: 屋根面ごとの計算 (${roofType} 指定)
+${specificConstraint}
+- 全ての辺に対し、「水平投影図(Plan)」と「勾配実寸(Actual)」の両方を算出し、座標データと共に返せ。
+- 各面の中央付近を通る「流れ寸法(flow)」の始点・終点・距離を算出せよ。
+
+出力形式(JSON):
 {
-  "planes": [{
-    "name": "面名",
-    "vertices": [{"x": 0, "y": 0}, ...],
-    "edges": [{"from": 0, "to": 1, "len_plan": 3640, "len_actual": 3845}],
-    "center_label": "3845"
-  }],
-  "step_logs": "解析プロセスを記述"
+  "slope": 6.0,
+  "step_logs": "解析思考プロセス",
+  "planes": [
+    {
+      "id": 1, 
+      "vertices": [{"x":0,"y":0}, ...],
+      "edges": [{"from":0,"to":1,"type":"eave","len_plan":1000,"len_actual":1000}],
+      "flow": {"start":{"x":10,"y":10},"end":{"x":10,"y":50},"len_plan":4000,"len_actual":4500}
+    }
+  ]
 }`;
 
-        document.getElementById('analyzeBtn').innerText = "解析中...";
-        // ここにGemini APIへのリクエストを実装。
-        // 結果取得後、document.getElementById('resultArea').style.display = 'block';
-        // renderComplexRoof(result, 'planCanvas', false); 等を実行。
+            const parts = selectedFiles.map(f => ({
+                inlineData: { data: f.data.split(',')[1], mimeType: f.file.type }
+            }));
+
+            // APIリクエスト
+            const result = await model.generateContent([prompt, ...parts]);
+            const responseText = result.response.text();
+
+            // ---------------------------------------------------------
+            // 3. フリーズ防止: JSONパースの安全性向上
+            // ---------------------------------------------------------
+            let data;
+            try {
+                // マークダウン記号 ```json ... ``` がある場合に除去
+                const cleanJson = responseText.replace(/```json|```/g, '').trim();
+                data = JSON.parse(cleanJson);
+            } catch (jsonErr) {
+                console.error("JSON Parse Error:", responseText);
+                throw new Error("AIの返答が正しいJSON形式ではありませんでした。再試行してください。");
+            }
+
+            document.getElementById('resultCard').style.display = 'block';
+            logArea.style.display = 'block';
+            logArea.innerText = `【解析ログ】\n${data.step_logs}\n\n(勾配: ${data.slope}寸)`;
+
+            // 描画処理 (エラーがあってもここで止まらないようにtry-catchで囲む)
+            try {
+                drawPolygon(data, 'planCanvas', false);
+                drawPolygon(data, 'slopeCanvas', true);
+            } catch (drawErr) {
+                console.error("Drawing Error:", drawErr);
+                alert("描画中にエラーが発生しましたが、解析データはログに表示されています。");
+            }
+
+        } catch (e) {
+            errorMsg.innerText = "エラーが発生しました: " + e.message;
+            errorMsg.style.display = 'block';
+            console.error(e);
+        } finally {
+            btn.disabled = false;
+            btn.innerText = "精密解析・実行";
+        }
     };
+
+    function drawPolygon(data, canvasId, isActual) {
+        const canvas = document.getElementById(canvasId);
+        if (!data.planes || data.planes.length === 0) return; // データなしなら終了
+
+        const ctx = canvas.getContext('2d');
+        canvas.width = 1200; canvas.height = 900;
+        ctx.clearRect(0,0,1200,900);
+
+        // スケーリング計算
+        let allX = [], allY = [];
+        data.planes.forEach(p => {
+            if(p.vertices) p.vertices.forEach(v => { allX.push(v.x); allY.push(v.y); });
+        });
+        
+        // 頂点データがない場合の安全策
+        if (allX.length === 0) {
+            ctx.fillText("座標データが取得できませんでした", 50, 50);
+            return;
+        }
+
+        const minX = Math.min(...allX), maxX = Math.max(...allX);
+        const minY = Math.min(...allY), maxY = Math.max(...allY);
+        const roofW = maxX - minX, roofH = maxY - minY;
+        const scale = Math.min(1000/roofW, 700/roofH);
+        const offsetX = (1200 - roofW * scale) / 2 - minX * scale;
+        const offsetY = (900 - roofH * scale) / 2 - minY * scale;
+
+        const color = isActual ? "#d93025" : "#1a73e8";
+
+        data.planes.forEach(plane => {
+            if (!plane.vertices) return;
+
+            // 1. ポリゴン描画
+            ctx.beginPath();
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 3;
+            plane.vertices.forEach((v, i) => {
+                const px = v.x * scale + offsetX;
+                const py = v.y * scale + offsetY;
+                if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+            });
+            ctx.closePath();
+            ctx.stroke();
+
+            // 2. 辺ラベル
+            if (plane.edges) {
+                ctx.font = "bold 13px sans-serif";
+                plane.edges.forEach(edge => {
+                    const v1 = plane.vertices[edge.from];
+                    const v2 = plane.vertices[edge.to] || plane.vertices[0];
+                    if (!v1 || !v2) return; // 頂点インデックスエラー回避
+
+                    const mx = ((v1.x + v2.x) / 2) * scale + offsetX;
+                    const my = ((v1.y + v2.y) / 2) * scale + offsetY;
+                    const val = isActual ? edge.len_actual : edge.len_plan;
+                    const label = `${edge.type ? edge.type.toUpperCase() : ''}: ${val}`;
+                    
+                    drawTextLabel(ctx, label, mx, my, color);
+                });
+            }
+
+            // 3. 流れ寸法 (存在する場合のみ)
+            if (plane.flow && plane.flow.start && plane.flow.end) {
+                const fs = plane.flow.start, fe = plane.flow.end;
+                const sx = fs.x * scale + offsetX, sy = fs.y * scale + offsetY;
+                const ex = fe.x * scale + offsetX, ey = fe.y * scale + offsetY;
+
+                ctx.save();
+                ctx.setLineDash([5, 5]);
+                ctx.beginPath();
+                ctx.moveTo(sx, sy);
+                ctx.lineTo(ex, ey);
+                ctx.strokeStyle = color;
+                ctx.stroke();
+                ctx.restore();
+
+                const flowVal = isActual ? plane.flow.len_actual : plane.flow.len_plan;
+                drawTextLabel(ctx, `流れ: ${flowVal}`, (sx+ex)/2, (sy+ey)/2, color, true);
+            }
+        });
+    }
+
+    function drawTextLabel(ctx, text, x, y, color, isHighlight = false) {
+        ctx.font = isHighlight ? "bold 15px sans-serif" : "12px sans-serif";
+        const tw = ctx.measureText(text).width;
+        ctx.fillStyle = "rgba(255,255,255,0.85)";
+        ctx.fillRect(x - tw/2 - 4, y - 10, tw + 8, 20);
+        ctx.fillStyle = color;
+        ctx.textAlign = "center";
+        ctx.fillText(text, x, y + 5);
+    }
 </script>
 </body>
 </html>
